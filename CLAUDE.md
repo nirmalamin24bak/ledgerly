@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What This Is
 
-**Ledgerly** — AI-powered bill scanning and supplier ledger for construction businesses in India. Built with Next.js 14 App Router, Supabase (PostgreSQL + Auth + Storage), and Anthropic Claude for vision and NL-to-SQL.
+**Ledgerly** — AI-powered bill scanning and expense tracking for businesses and individuals. Built with Next.js 14 App Router, Supabase (PostgreSQL + Auth + Storage), and Anthropic Claude for vision and NL-to-SQL.
 
 ## Commands
 

@@ -122,7 +122,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-blue-300 text-xs mt-6">AI-powered bill scanning &amp; supplier ledger for construction businesses</p>
+        <p className="text-center text-blue-300 text-xs mt-6">AI-powered bill scanning &amp; expense tracking for businesses and individuals</p>
       </div>
     </div>
   )

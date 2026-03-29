@@ -1,6 +1,6 @@
 # Ledgerly
 
-**AI-powered bill scanning and supplier ledger for construction businesses in India.**
+**AI-powered bill scanning and expense tracking for businesses and individuals.**
 
 Upload a bill image → Claude reads it → supplier ledger updates automatically.
 
