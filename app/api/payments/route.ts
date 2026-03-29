@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     // Insert payment
     const { data: payment, error: paymentError } = await supabase
-      .from('payments')
+      .from('bill_payments')
       .insert({ ...parsed.data, owner_id: user.id })
       .select()
       .single()
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       if (bill) {
         // Get total payments for this bill
         const { data: billPayments } = await supabase
-          .from('payments')
+          .from('bill_payments')
           .select('amount')
           .eq('bill_id', parsed.data.bill_id)
 
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
     const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
     const { data, error } = await supabase
-      .from('payments')
+      .from('bill_payments')
       .select('*, supplier:suppliers(id, name), bill:bills(id, invoice_number)')
       .in('owner_id', ownerIds)
       .order('payment_date', { ascending: false })

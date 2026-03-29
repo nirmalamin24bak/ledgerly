@@ -12,7 +12,7 @@ export default async function SupplierDetailPage({ params }: { params: { id: str
   const [{ data: supplier }, { data: bills }, { data: payments }, { data: ledger }] = await Promise.all([
     supabase.from('suppliers').select('*').eq('id', params.id).single(),
     supabase.from('bills').select('*').eq('supplier_id', params.id).order('invoice_date', { ascending: false }),
-    supabase.from('payments').select('*').eq('supplier_id', params.id).order('payment_date', { ascending: false }),
+    supabase.from('bill_payments').select('*').eq('supplier_id', params.id).order('payment_date', { ascending: false }),
     supabase.from('ledger_entries').select('*').eq('supplier_id', params.id).order('entry_date', { ascending: false }),
   ])
 

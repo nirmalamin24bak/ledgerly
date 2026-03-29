@@ -48,7 +48,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // Check for bills or payments
     const [{ count: billCount }, { count: paymentCount }] = await Promise.all([
       supabase.from('bills').select('*', { count: 'exact', head: true }).eq('supplier_id', params.id),
-      supabase.from('payments').select('*', { count: 'exact', head: true }).eq('supplier_id', params.id),
+      supabase.from('bill_payments').select('*', { count: 'exact', head: true }).eq('supplier_id', params.id),
     ])
 
     if ((billCount ?? 0) > 0 || (paymentCount ?? 0) > 0) {

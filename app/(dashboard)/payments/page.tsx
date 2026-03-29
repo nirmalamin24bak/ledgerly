@@ -15,7 +15,7 @@ export default async function PaymentsPage() {
 
   const [{ data: payments }, { data: suppliers }] = await Promise.all([
     supabase
-      .from('payments')
+      .from('bill_payments')
       .select('*, supplier:suppliers(id, name), bill:bills(id, invoice_number)')
       .in('owner_id', ownerIds)
       .order('payment_date', { ascending: false }),
