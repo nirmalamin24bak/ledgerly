@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "app/api/scan-bill/route.ts": { "maxDuration": 60 },
+    "app/api/ai-query/route.ts": { "maxDuration": 30 }
+  }
+}
