@@ -10,12 +10,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('name, role, account_type')
+    .select('name, role')
     .eq('id', user.id)
     .single()
 
   const displayName = profile?.name ?? user.email ?? 'User'
-  const accountType = (profile?.account_type ?? 'individual') as 'individual' | 'company'
+  // Read account_type from auth metadata — avoids PostgREST schema cache issues
+  const accountType = (user.user_metadata?.account_type ?? 'individual') as 'individual' | 'company'
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">

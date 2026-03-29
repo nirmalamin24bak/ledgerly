@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request) {
@@ -11,8 +11,11 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Invalid account type' }, { status: 400 })
   }
 
-  // Use RPC to bypass PostgREST schema cache issue with new columns
-  const { error } = await supabase.rpc('update_account_type', { new_type: account_type })
+  // Update via auth admin — goes through /auth/v1/, not PostgREST, so no schema cache issues
+  const service = createServiceClient()
+  const { error } = await service.auth.admin.updateUserById(user.id, {
+    user_metadata: { ...user.user_metadata, account_type },
+  })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

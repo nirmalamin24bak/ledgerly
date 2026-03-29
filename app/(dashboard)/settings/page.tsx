@@ -9,7 +9,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('name, email, account_type')
+    .select('name')
     .eq('id', user.id)
     .single()
 
@@ -22,8 +22,8 @@ export default async function SettingsPage() {
 
       <SettingsClient
         name={profile?.name ?? ''}
-        email={profile?.email ?? user.email ?? ''}
-        accountType={(profile?.account_type ?? 'individual') as 'individual' | 'company'}
+        email={user.email ?? ''}
+        accountType={(user.user_metadata?.account_type ?? 'individual') as 'individual' | 'company'}
       />
     </div>
   )
