@@ -11,10 +11,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Invalid account type' }, { status: 400 })
   }
 
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ account_type })
-    .eq('id', user.id)
+  // Use RPC to bypass PostgREST schema cache issue with new columns
+  const { error } = await supabase.rpc('update_account_type', { new_type: account_type })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
