@@ -43,13 +43,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   // Only company accounts can invite accountants
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.account_type !== 'company') {
+  if (user.user_metadata?.account_type !== 'company') {
     return NextResponse.json({ error: 'Only company accounts can add team members' }, { status: 403 })
   }
 

@@ -8,14 +8,9 @@ export default async function TeamPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Only company accounts can access this page
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('account_type')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.account_type !== 'company') redirect('/dashboard')
+  // Read account_type from auth metadata (same as layout.tsx)
+  const accountType = user.user_metadata?.account_type ?? 'individual'
+  if (accountType !== 'company') redirect('/dashboard')
 
   // Fetch current accountants
   const { data: accessRows } = await supabase
