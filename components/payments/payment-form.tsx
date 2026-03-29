@@ -70,11 +70,11 @@ export default function PaymentForm({ bill, supplier, allSuppliers, onClose, onS
         </div>
 
         {bill && (
-          <div className="bg-amber-50 rounded-lg p-3 mb-4 text-sm">
-            <div className="font-medium text-amber-900">{displaySupplier}</div>
-            <div className="text-amber-700">Invoice: {bill.invoice_number ?? 'N/A'} · Total: {formatCurrency(Number(bill.total_amount))}</div>
+          <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
+            <div className="font-medium text-blue-950">{displaySupplier}</div>
+            <div className="text-blue-950">Invoice: {bill.invoice_number ?? 'N/A'} · Total: {formatCurrency(Number(bill.total_amount))}</div>
             {Number(bill.tds_amount) > 0 && (
-              <div className="text-amber-600 text-xs mt-1">TDS deduction: {formatCurrency(Number(bill.tds_amount))} · Net payable: {formatCurrency(Number(bill.total_amount) - Number(bill.tds_amount))}</div>
+              <div className="text-blue-900 text-xs mt-1">TDS deduction: {formatCurrency(Number(bill.tds_amount))} · Net payable: {formatCurrency(Number(bill.total_amount) - Number(bill.tds_amount))}</div>
             )}
           </div>
         )}

@@ -102,6 +102,8 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">
+            <span className="text-blue-900 font-medium">Know your numbers</span>
+            {' · '}
             {now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
@@ -124,7 +126,7 @@ export default async function DashboardPage() {
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Recent Bills</h2>
-            <Link href="/bills" className="text-sm text-amber-600 hover:underline">View all</Link>
+            <Link href="/bills" className="text-sm text-blue-900 hover:underline">View all</Link>
           </div>
           <RecentBills bills={(recentBills as BillWithSupplier[]) ?? []} />
         </div>
@@ -133,7 +135,7 @@ export default async function DashboardPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Top Outstanding</h2>
-            <Link href="/suppliers" className="text-sm text-amber-600 hover:underline">View all</Link>
+            <Link href="/suppliers" className="text-sm text-blue-900 hover:underline">View all</Link>
           </div>
           <TopSuppliers suppliers={topSuppliers} />
         </div>

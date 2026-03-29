@@ -18,9 +18,9 @@ export default function StatsCards({ stats }: { stats: DashboardStats }) {
       value: formatCurrency(stats.this_month_payable),
       sub: 'Due this month',
       icon: Clock,
-      color: 'bg-amber-500',
-      textColor: 'text-amber-600',
-      bgLight: 'bg-amber-50',
+      color: 'bg-blue-500',
+      textColor: 'text-blue-900',
+      bgLight: 'bg-blue-50',
     },
     {
       label: 'Overdue Amount',

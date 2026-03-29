@@ -26,7 +26,7 @@ export default function TopSuppliers({ suppliers }: { suppliers: SupplierBalance
           <div key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
             <span className="text-xs font-medium text-gray-400 w-4">{i + 1}</span>
             <div className="flex-1 min-w-0">
-              <Link href={`/suppliers/${s.id}`} className="text-sm font-medium text-gray-900 hover:text-amber-600 truncate block">
+              <Link href={`/suppliers/${s.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-900 truncate block">
                 {s.name}
               </Link>
               {s.category && (
@@ -35,7 +35,7 @@ export default function TopSuppliers({ suppliers }: { suppliers: SupplierBalance
               {/* Progress bar */}
               <div className="mt-1 h-1 rounded-full bg-gray-100">
                 <div
-                  className="h-1 rounded-full bg-amber-500"
+                  className="h-1 rounded-full bg-blue-500"
                   style={{ width: `${Math.min(100, (s.outstanding / max) * 100)}%` }}
                 />
               </div>

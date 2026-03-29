@@ -86,7 +86,7 @@ export default function SuppliersClient({
           {filtered.length === 0 ? (
             <div className="p-12 text-center text-gray-400">
               {suppliers.length === 0
-                ? <span>No suppliers yet. <button onClick={handleAdd} className="text-amber-600 hover:underline">Add your first supplier</button>.</span>
+                ? <span>No suppliers yet. <button onClick={handleAdd} className="text-blue-900 hover:underline">Add your first supplier</button>.</span>
                 : 'No suppliers match your filters.'}
             </div>
           ) : (
@@ -105,7 +105,7 @@ export default function SuppliersClient({
                 {filtered.map(s => (
                   <tr key={s.id} className="table-row-hover">
                     <td className="px-4 py-3">
-                      <Link href={`/suppliers/${s.id}`} className="font-medium text-gray-900 hover:text-amber-600 flex items-center gap-1">
+                      <Link href={`/suppliers/${s.id}`} className="font-medium text-gray-900 hover:text-blue-900 flex items-center gap-1">
                         {s.name}
                         <ChevronRight className="w-3.5 h-3.5 opacity-40" />
                       </Link>
@@ -123,7 +123,7 @@ export default function SuppliersClient({
                       {isOwner && (
                         <button
                           onClick={() => handleEdit(s)}
-                          className="text-xs text-gray-500 hover:text-amber-600 font-medium px-2 py-1 rounded hover:bg-amber-50"
+                          className="text-xs text-gray-500 hover:text-blue-900 font-medium px-2 py-1 rounded hover:bg-blue-50"
                         >
                           Edit
                         </button>

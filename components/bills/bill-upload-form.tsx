@@ -143,7 +143,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
         <h2 className="font-semibold text-gray-900 mb-4">Upload Bill</h2>
 
         <div
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-colors"
+          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-700 hover:bg-blue-50 transition-colors"
           onClick={() => fileRef.current?.click()}
         >
           {file ? (
@@ -196,7 +196,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
         {extracted && (
           <div className={`mt-4 rounded-lg px-4 py-3 flex items-start gap-2.5 ${
             extracted.confidence === 'high' ? 'bg-green-50 text-green-800' :
-            extracted.confidence === 'medium' ? 'bg-amber-50 text-amber-800' :
+            extracted.confidence === 'medium' ? 'bg-blue-50 text-blue-950' :
             'bg-red-50 text-red-800'
           }`}>
             {extracted.confidence === 'high' ? <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
@@ -265,7 +265,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
             </div>
             <div>
               <label className="label font-semibold text-gray-900">Total Amount (₹) *</label>
-              <input className="input border-amber-400 font-semibold" type="number" step="0.01" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} placeholder="0.00" required />
+              <input className="input border-blue-700 font-semibold" type="number" step="0.01" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} placeholder="0.00" required />
             </div>
           </div>
         </div>
@@ -277,7 +277,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
               type="checkbox"
               checked={form.tds_applicable}
               onChange={e => set('tds_applicable', e.target.checked)}
-              className="rounded text-amber-600"
+              className="rounded text-blue-900"
             />
             <span className="label mb-0">TDS Applicable</span>
           </label>

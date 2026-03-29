@@ -7,7 +7,7 @@ export default function RecentBills({ bills }: { bills: BillWithSupplier[] }) {
   if (!bills.length) {
     return (
       <div className="card p-8 text-center text-gray-400">
-        <p>No bills yet. <Link href="/bills/upload" className="text-amber-600 hover:underline">Upload your first bill</Link>.</p>
+        <p>No bills yet. <Link href="/bills/upload" className="text-blue-900 hover:underline">Upload your first bill</Link>.</p>
       </div>
     )
   }
@@ -31,7 +31,7 @@ export default function RecentBills({ bills }: { bills: BillWithSupplier[] }) {
               <td className="px-4 py-3">
                 <Link
                   href={`/suppliers/${bill.supplier_id}`}
-                  className="font-medium text-gray-900 hover:text-amber-600"
+                  className="font-medium text-gray-900 hover:text-blue-900"
                 >
                   {bill.supplier.name}
                 </Link>
@@ -40,7 +40,7 @@ export default function RecentBills({ bills }: { bills: BillWithSupplier[] }) {
                 )}
               </td>
               <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                <Link href={`/bills`} className="hover:text-amber-600">
+                <Link href={`/bills`} className="hover:text-blue-900">
                   {bill.invoice_number ?? '—'}
                 </Link>
               </td>

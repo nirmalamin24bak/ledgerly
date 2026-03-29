@@ -80,9 +80,9 @@ export default function ReportsClient({ monthlySummary, categoryOutstanding, yea
       {/* AI Query */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-amber-500" />
+          <Sparkles className="w-5 h-5 text-blue-500" />
           <h2 className="font-semibold text-gray-900">Ask AI</h2>
-          <span className="badge bg-amber-100 text-amber-700 ml-1">Beta</span>
+          <span className="badge bg-blue-100 text-blue-950 ml-1">Beta</span>
         </div>
         <p className="text-sm text-gray-500 mb-3">Ask questions about your bills and payments in plain English.</p>
 
@@ -109,7 +109,7 @@ export default function ReportsClient({ monthlySummary, categoryOutstanding, yea
             <button
               key={q}
               onClick={() => { setQuery(q); handleAiQuery(q) }}
-              className="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700 transition-colors"
+              className="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-950 transition-colors"
             >
               {q}
             </button>
@@ -122,7 +122,7 @@ export default function ReportsClient({ monthlySummary, categoryOutstanding, yea
 
         {aiResult && (
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-gray-600 bg-amber-50 rounded-lg px-4 py-2.5 italic">{aiResult.explanation}</p>
+            <p className="text-sm text-gray-600 bg-blue-50 rounded-lg px-4 py-2.5 italic">{aiResult.explanation}</p>
             {aiResult.rows.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
@@ -193,14 +193,14 @@ export default function ReportsClient({ monthlySummary, categoryOutstanding, yea
               })}
             </tbody>
             <tfoot>
-              <tr className="bg-amber-50 border-t-2 border-amber-200">
+              <tr className="bg-blue-50 border-t-2 border-blue-200">
                 <td className="px-4 py-3 font-bold text-gray-900">Total {year}</td>
                 <td className="px-4 py-3 text-right font-semibold">{monthlySummary.reduce((s, m) => s + m.bills, 0)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{formatCurrency(yearlyTotals.taxable)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{formatCurrency(yearlyTotals.cgst)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{formatCurrency(yearlyTotals.sgst)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{formatCurrency(yearlyTotals.igst)}</td>
-                <td className="px-4 py-3 text-right font-bold text-amber-700">{formatCurrency(yearlyTotals.total_gst)}</td>
+                <td className="px-4 py-3 text-right font-bold text-blue-950">{formatCurrency(yearlyTotals.total_gst)}</td>
                 <td className="px-4 py-3 text-right font-semibold">{formatCurrency(yearlyTotals.tds)}</td>
                 <td className="px-4 py-3 text-right font-bold text-gray-900">{formatCurrency(yearlyTotals.total)}</td>
               </tr>

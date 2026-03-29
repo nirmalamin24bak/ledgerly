@@ -97,7 +97,7 @@ export default function BillsClient({ bills, suppliers }: Props) {
           {filtered.length === 0 ? (
             <div className="p-12 text-center text-gray-400">
               {bills.length === 0
-                ? <span>No bills yet. <Link href="/bills/upload" className="text-amber-600 hover:underline">Upload your first bill</Link>.</span>
+                ? <span>No bills yet. <Link href="/bills/upload" className="text-blue-900 hover:underline">Upload your first bill</Link>.</span>
                 : 'No bills match your filters.'}
             </div>
           ) : (
@@ -118,7 +118,7 @@ export default function BillsClient({ bills, suppliers }: Props) {
                 {filtered.map(b => (
                   <tr key={b.id} className="table-row-hover">
                     <td className="px-4 py-3">
-                      <Link href={`/suppliers/${b.supplier_id}`} className="font-medium text-gray-900 hover:text-amber-600">
+                      <Link href={`/suppliers/${b.supplier_id}`} className="font-medium text-gray-900 hover:text-blue-900">
                         {b.supplier.name}
                       </Link>
                       {b.supplier.category && <div className="text-xs text-gray-400 capitalize">{b.supplier.category}</div>}
@@ -139,7 +139,7 @@ export default function BillsClient({ bills, suppliers }: Props) {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {b.file_url && (
-                          <a href={b.file_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-amber-600" title="View file">
+                          <a href={b.file_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-900" title="View file">
                             <ExternalLink className="w-4 h-4" />
                           </a>
                         )}
