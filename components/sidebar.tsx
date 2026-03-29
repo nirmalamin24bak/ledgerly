@@ -13,6 +13,7 @@ import {
   Receipt,
   UsersRound,
   BookUser,
+  Settings,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -103,6 +104,22 @@ export default function Sidebar({
           )
         })}
       </nav>
+
+      {/* Settings */}
+      <div className="px-3 pb-1">
+        <Link
+          href="/settings"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150',
+            pathname === '/settings'
+              ? 'bg-white/15 text-white'
+              : 'text-blue-200/80 hover:bg-white/8 hover:text-white'
+          )}
+        >
+          <Settings className={cn('w-4 h-4 shrink-0', pathname === '/settings' ? 'text-white' : 'text-blue-300/70')} />
+          <span>Settings</span>
+        </Link>
+      </div>
 
       {/* User + Logout */}
       <div className="px-3 py-4 border-t border-white/10">
