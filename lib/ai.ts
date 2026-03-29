@@ -32,7 +32,7 @@ const ExtractedBillSchema = z.object({
   confidence: z.enum(['high', 'medium', 'low']).default('medium'),
 })
 
-const SYSTEM_PROMPT = `You are an expert Indian GST invoice parser for construction businesses.
+const SYSTEM_PROMPT = `You are an expert Indian GST invoice parser.
 Extract all bill/invoice details from the provided image and return ONLY a valid JSON object — no markdown, no explanation.
 
 Rules:
@@ -72,10 +72,8 @@ export async function extractBillData(
   const client = getClient()
   const base64 = fileBuffer.toString('base64')
 
-  // Claude supports image/jpeg, image/png, image/gif, image/webp
-  // For PDFs, we treat as image/jpeg if mimeType is application/pdf (needs pre-conversion)
   const claudeMediaType = mimeType === 'application/pdf'
-    ? 'image/jpeg' // PDF must be rendered to image first; this is a best-effort fallback
+    ? 'image/jpeg'
     : (mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp')
 
   const response = await client.messages.create({
@@ -88,16 +86,9 @@ export async function extractBillData(
         content: [
           {
             type: 'image',
-            source: {
-              type: 'base64',
-              media_type: claudeMediaType,
-              data: base64,
-            },
+            source: { type: 'base64', media_type: claudeMediaType, data: base64 },
           },
-          {
-            type: 'text',
-            text: 'Extract all invoice/bill details from this document and return as JSON.',
-          },
+          { type: 'text', text: 'Extract all invoice/bill details from this document and return as JSON.' },
         ],
       },
     ],
@@ -106,53 +97,87 @@ export async function extractBillData(
   const raw = response.content[0]?.type === 'text' ? response.content[0].text : null
   if (!raw) throw new Error('Claude returned empty response')
 
-  // Strip any markdown code fences if Claude accidentally added them
+  // Strip markdown fences if present
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
 
-  const parsed = JSON.parse(cleaned)
-  const validated = ExtractedBillSchema.parse(parsed)
-  return validated as ExtractedBillData
+  // Safe JSON parse with meaningful error
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    throw new Error('Claude returned malformed JSON — please retry or upload a clearer image')
+  }
+
+  // Validate structure with Zod — reject hallucinated/wrong-shape responses
+  const result = ExtractedBillSchema.safeParse(parsed)
+  if (!result.success) {
+    throw new Error('Claude response failed validation — please retry')
+  }
+
+  return result.data as ExtractedBillData
 }
 
-// Natural language → SQL for AI query feature
+// Safe UUID validator — prevent prompt injection via ownerIds
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function nlToSql(
   query: string,
   ownerIds: string[]
 ): Promise<{ sql: string; explanation: string }> {
-  const ownerFilter = ownerIds.map(id => `'${id}'`).join(', ')
+  // Validate all ownerIds are real UUIDs before embedding in prompt
+  const safeOwnerIds = ownerIds.filter(id => UUID_REGEX.test(id))
+  if (safeOwnerIds.length === 0) throw new Error('No valid owner IDs')
+
+  const ownerFilter = safeOwnerIds.map(id => `'${id}'`).join(', ')
 
   const client = getClient()
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 800,
-    system: `You convert natural language questions about a construction bill ledger to safe PostgreSQL SELECT queries.
+    system: `You convert natural language questions about a bill ledger to safe PostgreSQL SELECT queries.
 
 Database tables (always filter by owner_id IN (${ownerFilter})):
 - suppliers(id, owner_id, name, gst_number, category)
 - bills(id, owner_id, supplier_id, invoice_number, invoice_date, due_date, total_amount, gst_amount, tds_amount, status)
-- payments(id, owner_id, supplier_id, bill_id, amount, payment_date, mode)
+- bill_payments(id, owner_id, supplier_id, bill_id, amount, payment_date, mode)
 - ledger_entries(id, owner_id, supplier_id, type, amount, running_balance, entry_date)
 
 RULES:
-- Only SELECT queries allowed — no INSERT, UPDATE, DELETE, DROP, etc.
+- Only SELECT queries — no INSERT, UPDATE, DELETE, DROP, TRUNCATE, ALTER, GRANT, REVOKE, EXECUTE, COPY
 - Always include owner_id IN (${ownerFilter}) in the WHERE clause
+- Maximum LIMIT 500 rows
 - Return ONLY valid JSON: { "sql": "...", "explanation": "..." }
 - explanation should be a plain English summary of what the query does`,
-    messages: [
-      { role: 'user', content: query },
-    ],
+    messages: [{ role: 'user', content: query }],
   })
 
   const raw = response.content[0]?.type === 'text' ? response.content[0].text : null
   if (!raw) throw new Error('Claude returned empty response')
 
   const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
-  const result = JSON.parse(cleaned) as { sql: string; explanation: string }
 
-  // Safety: block any non-SELECT
+  let result: { sql: string; explanation: string }
+  try {
+    result = JSON.parse(cleaned) as { sql: string; explanation: string }
+  } catch {
+    throw new Error('Claude returned malformed JSON for query')
+  }
+
+  if (!result.sql || typeof result.sql !== 'string') {
+    throw new Error('Claude did not return a valid SQL query')
+  }
+
+  // Strict safety check — block any mutation or dangerous statements
   const upperSql = result.sql.trim().toUpperCase()
-  if (!upperSql.startsWith('SELECT') || /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b/.test(upperSql)) {
+  const FORBIDDEN = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|COPY|CREATE|REPLACE|DO)\b/
+  if (!upperSql.startsWith('SELECT') || FORBIDDEN.test(upperSql)) {
     throw new Error('Only SELECT queries are allowed')
+  }
+
+  // Ensure ownerIds are present in the query
+  const hasOwnerFilter = safeOwnerIds.some(id => result.sql.includes(id))
+  if (!hasOwnerFilter) {
+    throw new Error('Generated query is missing owner_id filter — blocked for security')
   }
 
   return result

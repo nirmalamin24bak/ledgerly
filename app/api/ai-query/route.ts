@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { nlToSql } from '@/lib/ai'
+import { checkRateLimit, LIMITS } from '@/lib/rate-limit'
 import { z } from 'zod'
 
 const QuerySchema = z.object({
@@ -15,40 +16,42 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
-    const body = await req.json()
+    // Rate limit: 20 AI queries per minute per user
+    const { allowed, remaining } = checkRateLimit(`ai:${user.id}`, LIMITS.AI.max, LIMITS.AI.windowMs)
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please wait a moment.' },
+        { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'Retry-After': '60' } }
+      )
+    }
+
+    let body: unknown
+    try { body = await req.json() }
+    catch { return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 }) }
+
     const parsed = QuerySchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Invalid query' }, { status: 400 })
     }
 
-    // Get accessible owner IDs
     const { data: accessRows } = await supabase
       .from('accountant_access')
       .select('owner_id')
       .eq('accountant_id', user.id)
     const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
-    // Convert NL → SQL
     const { sql, explanation } = await nlToSql(parsed.data.query, ownerIds)
 
-    // Execute the generated SQL via service client (controlled environment)
     const serviceClient = createServiceClient()
-    const { data: rows, error } = await serviceClient.rpc('execute_user_query', {
-      p_sql: sql,
-    })
+    const { data: rows, error } = await serviceClient.rpc('execute_user_query', { p_sql: sql })
 
-    // Fallback: if RPC doesn't exist, execute raw
-    // NOTE: In production, use the RPC approach or a query builder
-    if (error && error.message.includes('function execute_user_query')) {
-      // Direct execution fallback (only safe because nlToSql validates SELECT-only)
-      const result = await serviceClient.from('bills').select('*').limit(0) // dummy to get client
-      // We can't easily run raw SQL via supabase-js without RPC
+    if (error && error.message.includes('execute_user_query')) {
       return NextResponse.json({
         success: true,
         data: {
           explanation,
           rows: [],
-          note: 'To enable AI query execution, create the execute_user_query RPC in Supabase. See README.',
+          note: 'AI query execution requires the execute_user_query RPC. See README.',
         },
       })
     }
@@ -58,6 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: { explanation, rows: rows ?? [] },
+      meta: { 'x-ratelimit-remaining': remaining },
     })
   } catch (error) {
     console.error('ai-query error:', error)

@@ -3,14 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { createLedgerEntry } from '@/lib/ledger'
 import { z } from 'zod'
 
+const PAGE_SIZE = 50
+
 const PaymentSchema = z.object({
   supplier_id: z.string().uuid(),
   bill_id: z.string().uuid().nullable().optional(),
-  amount: z.number().positive('Amount must be positive'),
-  payment_date: z.string(),
+  amount: z.number().positive().max(100_000_000),
+  payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
   mode: z.enum(['cash', 'cheque', 'neft', 'rtgs', 'upi', 'other']),
-  reference_number: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
+  reference_number: z.string().max(100).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -19,13 +21,44 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
-    const body = await req.json()
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    }
+
     const parsed = PaymentSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    // Insert payment
+    // Verify supplier belongs to this owner
+    const { data: supplier } = await supabase
+      .from('suppliers')
+      .select('id')
+      .eq('id', parsed.data.supplier_id)
+      .eq('owner_id', user.id)
+      .single()
+
+    if (!supplier) {
+      return NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 404 })
+    }
+
+    // Verify bill belongs to this owner (if provided)
+    if (parsed.data.bill_id) {
+      const { data: bill } = await supabase
+        .from('bills')
+        .select('id')
+        .eq('id', parsed.data.bill_id)
+        .eq('owner_id', user.id)
+        .single()
+
+      if (!bill) {
+        return NextResponse.json({ success: false, error: 'Bill not found' }, { status: 404 })
+      }
+    }
+
     const { data: payment, error: paymentError } = await supabase
       .from('bill_payments')
       .insert({ ...parsed.data, owner_id: user.id })
@@ -34,7 +67,6 @@ export async function POST(req: NextRequest) {
 
     if (paymentError) throw paymentError
 
-    // Create ledger credit entry
     await createLedgerEntry({
       supplier_id: parsed.data.supplier_id,
       owner_id: user.id,
@@ -55,7 +87,6 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (bill) {
-        // Get total payments for this bill
         const { data: billPayments } = await supabase
           .from('bill_payments')
           .select('amount')
@@ -63,9 +94,9 @@ export async function POST(req: NextRequest) {
 
         const totalPaid = (billPayments ?? []).reduce((s, p) => s + Number(p.amount), 0)
         const netPayable = Number(bill.total_amount) - Number(bill.tds_amount)
-
         const status = totalPaid >= netPayable ? 'paid' : totalPaid > 0 ? 'partial' : 'pending'
-        await supabase.from('bills').update({ status }).eq('id', parsed.data.bill_id)
+
+        await supabase.from('bills').update({ status }).eq('id', parsed.data.bill_id).eq('owner_id', user.id)
       }
     }
 
@@ -82,20 +113,31 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
     const { data: accessRows } = await supabase
       .from('accountant_access')
       .select('owner_id')
       .eq('accountant_id', user.id)
     const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from('bill_payments')
-      .select('*, supplier:suppliers(id, name), bill:bills(id, invoice_number)')
+      .select('*, supplier:suppliers(id, name), bill:bills(id, invoice_number)', { count: 'exact' })
       .in('owner_id', ownerIds)
       .order('payment_date', { ascending: false })
+      .range(from, to)
 
     if (error) throw error
-    return NextResponse.json({ success: true, data })
+
+    return NextResponse.json({
+      success: true,
+      data,
+      pagination: { page, pageSize: PAGE_SIZE, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / PAGE_SIZE) },
+    })
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch payments' }, { status: 500 })
   }
