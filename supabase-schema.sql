@@ -71,7 +71,7 @@ CREATE TABLE bills (
 );
 
 -- Payments made to suppliers
-CREATE TABLE payments (
+CREATE TABLE bill_payments (
   id                UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   supplier_id       UUID REFERENCES suppliers(id) ON DELETE RESTRICT NOT NULL,
   bill_id           UUID REFERENCES bills(id) ON DELETE SET NULL,
@@ -110,9 +110,9 @@ CREATE INDEX idx_bills_supplier         ON bills(supplier_id);
 CREATE INDEX idx_bills_status           ON bills(status);
 CREATE INDEX idx_bills_invoice_date     ON bills(invoice_date);
 CREATE INDEX idx_bills_due_date         ON bills(due_date);
-CREATE INDEX idx_payments_owner         ON payments(owner_id);
-CREATE INDEX idx_payments_supplier      ON payments(supplier_id);
-CREATE INDEX idx_payments_bill          ON payments(bill_id);
+CREATE INDEX idx_bill_payments_owner         ON bill_payments(owner_id);
+CREATE INDEX idx_bill_payments_supplier      ON bill_payments(supplier_id);
+CREATE INDEX idx_bill_payments_bill          ON bill_payments(bill_id);
 CREATE INDEX idx_ledger_supplier        ON ledger_entries(supplier_id);
 CREATE INDEX idx_ledger_owner           ON ledger_entries(owner_id);
 CREATE INDEX idx_ledger_entry_date      ON ledger_entries(entry_date);
@@ -170,14 +170,14 @@ CREATE POLICY "delete bill"
   ON bills FOR DELETE USING (owner_id = auth.uid());
 
 -- payments
-CREATE POLICY "read accessible payments"
-  ON payments FOR SELECT USING (owner_id IN (SELECT accessible_owner_ids()));
-CREATE POLICY "insert payment"
-  ON payments FOR INSERT WITH CHECK (owner_id = auth.uid());
-CREATE POLICY "update payment"
-  ON payments FOR UPDATE USING (owner_id = auth.uid());
-CREATE POLICY "delete payment"
-  ON payments FOR DELETE USING (owner_id = auth.uid());
+CREATE POLICY "read accessible bill_payments"
+  ON bill_payments FOR SELECT USING (owner_id IN (SELECT accessible_owner_ids()));
+CREATE POLICY "insert bill_payment"
+  ON bill_payments FOR INSERT WITH CHECK (owner_id = auth.uid());
+CREATE POLICY "update bill_payment"
+  ON bill_payments FOR UPDATE USING (owner_id = auth.uid());
+CREATE POLICY "delete bill_payment"
+  ON bill_payments FOR DELETE USING (owner_id = auth.uid());
 
 -- ledger_entries
 CREATE POLICY "read accessible ledger"
