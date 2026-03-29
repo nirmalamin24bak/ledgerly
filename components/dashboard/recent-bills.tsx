@@ -6,8 +6,9 @@ import { AlertTriangle } from 'lucide-react'
 export default function RecentBills({ bills }: { bills: BillWithSupplier[] }) {
   if (!bills.length) {
     return (
-      <div className="card p-8 text-center text-gray-400">
-        <p>No bills yet. <Link href="/bills/upload" className="text-blue-900 hover:underline">Upload your first bill</Link>.</p>
+      <div className="card p-8 text-center text-gray-400 text-sm">
+        No bills yet.{' '}
+        <Link href="/bills/upload" className="text-blue-900 hover:underline font-medium">Upload your first bill</Link>.
       </div>
     )
   }
@@ -16,50 +17,43 @@ export default function RecentBills({ bills }: { bills: BillWithSupplier[] }) {
     <div className="card overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">Supplier</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">Invoice #</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">Due Date</th>
-            <th className="text-right px-4 py-3 font-semibold text-gray-600">Amount</th>
-            <th className="text-left px-4 py-3 font-semibold text-gray-600">Status</th>
+          <tr className="border-b border-gray-100">
+            <th className="table-th">Supplier</th>
+            <th className="table-th">Invoice #</th>
+            <th className="table-th">Date</th>
+            <th className="table-th">Due</th>
+            <th className="table-th text-right">Amount</th>
+            <th className="table-th">Status</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-50">
           {bills.map((bill) => (
             <tr key={bill.id} className="table-row-hover">
-              <td className="px-4 py-3">
-                <Link
-                  href={`/suppliers/${bill.supplier_id}`}
-                  className="font-medium text-gray-900 hover:text-blue-900"
-                >
+              <td className="table-td">
+                <Link href={`/suppliers/${bill.supplier_id}`} className="font-medium text-gray-900 hover:text-blue-900">
                   {bill.supplier.name}
                 </Link>
                 {bill.supplier.category && (
                   <span className="ml-2 text-xs text-gray-400 capitalize">{bill.supplier.category}</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                <Link href={`/bills`} className="hover:text-blue-900">
-                  {bill.invoice_number ?? '—'}
-                </Link>
+              <td className="table-td font-mono text-xs text-gray-500">
+                {bill.invoice_number ?? '—'}
               </td>
-              <td className="px-4 py-3 text-gray-500">{formatDate(bill.invoice_date)}</td>
-              <td className="px-4 py-3">
-                <span className={`flex items-center gap-1 ${isOverdue(bill.due_date) && bill.status !== 'paid' ? 'text-red-600' : 'text-gray-500'}`}>
+              <td className="table-td text-gray-500">{formatDate(bill.invoice_date)}</td>
+              <td className="table-td">
+                <span className={`flex items-center gap-1 ${isOverdue(bill.due_date) && bill.status !== 'paid' ? 'text-red-500' : 'text-gray-500'}`}>
                   {isOverdue(bill.due_date) && bill.status !== 'paid' && (
-                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <AlertTriangle className="w-3 h-3" />
                   )}
                   {formatDate(bill.due_date)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-right font-semibold text-gray-900">
+              <td className="table-td text-right num font-semibold text-gray-900">
                 {formatCurrency(bill.total_amount)}
               </td>
-              <td className="px-4 py-3">
-                <span className={`badge ${statusColor(bill.status)} capitalize`}>
-                  {bill.status}
-                </span>
+              <td className="table-td">
+                <span className={`badge ${statusColor(bill.status)} capitalize`}>{bill.status}</span>
               </td>
             </tr>
           ))}

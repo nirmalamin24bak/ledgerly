@@ -37,10 +37,10 @@ export function getDaysOverdue(dueDateStr: string | null | undefined): number {
 
 export function statusColor(status: string): string {
   switch (status) {
-    case 'paid':    return 'bg-green-100 text-green-800'
-    case 'partial': return 'bg-yellow-100 text-yellow-800'
-    case 'pending': return 'bg-red-100 text-red-800'
-    default:        return 'bg-gray-100 text-gray-800'
+    case 'paid':    return 'badge-green'
+    case 'partial': return 'badge-yellow'
+    case 'pending': return 'badge-red'
+    default:        return 'badge-gray'
   }
 }
 

@@ -8,18 +8,26 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          500: '#1e40af',
-          600: '#1e3a8a',
-          700: '#1e3a8a',
-          900: '#1e3a8a',
-        },
-      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Satoshi', 'Inter', 'system-ui', 'sans-serif'],
+      },
+      colors: {
+        brand: {
+          50:  '#eff6ff',
+          100: '#dbeafe',
+          500: '#3b82f6',
+          600: '#1d4ed8',
+          700: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
+        },
+        surface: '#ffffff',
+        canvas: '#f6f7f9',
+      },
+      boxShadow: {
+        card: '0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px -1px rgba(0,0,0,0.04)',
+        'card-md': '0 4px 16px 0 rgba(0,0,0,0.07)',
       },
     },
   },

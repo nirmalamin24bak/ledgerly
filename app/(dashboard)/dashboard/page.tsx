@@ -4,6 +4,8 @@ import { DashboardStats, BillWithSupplier } from '@/types'
 import StatsCards from '@/components/dashboard/stats-cards'
 import RecentBills from '@/components/dashboard/recent-bills'
 import TopSuppliers from '@/components/dashboard/top-suppliers'
+import MonthlySpendChart from '@/components/dashboard/monthly-spend-chart'
+import BillStatusChart from '@/components/dashboard/bill-status-chart'
 import Link from 'next/link'
 import { Plus, Upload } from 'lucide-react'
 
@@ -12,7 +14,6 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get owner IDs this user can access
   const { data: accessRows } = await supabase
     .from('accountant_access')
     .select('owner_id')
@@ -20,7 +21,6 @@ export default async function DashboardPage() {
 
   const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
-  // Parallel queries
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
@@ -34,7 +34,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from('bills')
-      .select('total_amount, status, due_date')
+      .select('total_amount, status, due_date, invoice_date')
       .in('owner_id', ownerIds),
     supabase
       .from('suppliers')
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false }),
   ])
 
-  // Calculate stats
+  // ── Stats ──────────────────────────────────────────────────────
   const pendingBills = bills?.filter(b => b.status !== 'paid') ?? []
   const total_outstanding = pendingBills.reduce((s, b) => s + Number(b.total_amount), 0)
   const overdueBills = pendingBills.filter(b => b.due_date && b.due_date < today)
@@ -70,7 +70,28 @@ export default async function DashboardPage() {
     overdue_bills_count: overdueBills.length,
   }
 
-  // Top suppliers by outstanding balance (latest ledger entry per supplier)
+  // ── Monthly spend (last 6 months) ──────────────────────────────
+  const monthlySpend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+    const label = d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const amount = bills
+      ?.filter(b => b.invoice_date?.startsWith(key))
+      .reduce((s, b) => s + Number(b.total_amount), 0) ?? 0
+    return { month: label, amount }
+  })
+
+  // ── Bill status breakdown ──────────────────────────────────────
+  const sumBy = (status: string) =>
+    bills?.filter(b => b.status === status).reduce((s, b) => s + Number(b.total_amount), 0) ?? 0
+
+  const billStatusData = [
+    { name: 'Paid',    value: sumBy('paid'),    color: '#10b981' },
+    { name: 'Pending', value: sumBy('pending'), color: '#f59e0b' },
+    { name: 'Partial', value: sumBy('partial'), color: '#6366f1' },
+  ].filter(d => d.value > 0)
+
+  // ── Top suppliers ──────────────────────────────────────────────
   const latestBySupplier = new Map<string, number>()
   for (const entry of ledgerBalances ?? []) {
     if (!latestBySupplier.has(entry.supplier_id)) {
@@ -78,7 +99,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Get supplier names for top ones
   const topSupplierIds = [...latestBySupplier.entries()]
     .filter(([, balance]) => balance > 0)
     .sort((a, b) => b[1] - a[1])
@@ -100,10 +120,8 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            <span className="text-blue-900 font-medium">Know your numbers</span>
-            {' · '}
+          <h1 className="page-title">Dashboard</h1>
+          <p className="text-sm text-gray-400 mt-1">
             {now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
@@ -120,22 +138,37 @@ export default async function DashboardPage() {
       {/* Stats */}
       <StatsCards stats={stats} />
 
-      {/* Two-column section */}
+      {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Bills — 2/3 width */}
+        {/* Monthly Spend */}
+        <div className="lg:col-span-2 card p-5">
+          <p className="section-title mb-1">Monthly Spend</p>
+          <p className="text-xs text-gray-400 mb-4">Total billed per month (last 6 months)</p>
+          <MonthlySpendChart data={monthlySpend} />
+        </div>
+
+        {/* Bill Status Donut */}
+        <div className="card p-5">
+          <p className="section-title mb-1">Bills by Status</p>
+          <p className="text-xs text-gray-400 mb-4">By total amount</p>
+          <BillStatusChart data={billStatusData} />
+        </div>
+      </div>
+
+      {/* Tables row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Recent Bills</h2>
-            <Link href="/bills" className="text-sm text-blue-900 hover:underline">View all</Link>
+            <h2 className="section-title">Recent Bills</h2>
+            <Link href="/bills" className="text-sm text-blue-900 hover:underline font-medium">View all</Link>
           </div>
           <RecentBills bills={(recentBills as BillWithSupplier[]) ?? []} />
         </div>
 
-        {/* Top Suppliers — 1/3 width */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Top Outstanding</h2>
-            <Link href="/suppliers" className="text-sm text-blue-900 hover:underline">View all</Link>
+            <h2 className="section-title">Top Outstanding</h2>
+            <Link href="/suppliers" className="text-sm text-blue-900 hover:underline font-medium">View all</Link>
           </div>
           <TopSuppliers suppliers={topSuppliers} />
         </div>

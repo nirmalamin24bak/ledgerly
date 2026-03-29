@@ -1,5 +1,5 @@
 -- ============================================================
--- KHARCHI LEDGER — DATABASE SCHEMA
+-- LEDGERLY — DATABASE SCHEMA
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor)
 -- ============================================================
 

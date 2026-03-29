@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { formatCurrency, formatDate, statusColor, isOverdue } from '@/lib/utils'
 import Link from 'next/link'
 import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import LedgerBalanceChart from '@/components/suppliers/ledger-balance-chart'
 
 export default async function SupplierDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -20,6 +21,12 @@ export default async function SupplierDetailPage({ params }: { params: { id: str
 
   const latestBalance = ledger?.[0]?.running_balance ?? 0
   const today = new Date().toISOString().split('T')[0]
+
+  // Chart: chronological balance trend (last 30 entries)
+  const ledgerTrend = [...(ledger ?? [])]
+    .reverse()
+    .slice(-30)
+    .map(e => ({ date: e.entry_date, balance: Number(e.running_balance) }))
 
   return (
     <div className="space-y-6">
@@ -45,6 +52,9 @@ export default async function SupplierDetailPage({ params }: { params: { id: str
           </div>
         </div>
       </div>
+
+      {/* Balance Trend Chart */}
+      <LedgerBalanceChart data={ledgerTrend} />
 
       {/* Tabs-style section: Bills */}
       <div className="space-y-3">
