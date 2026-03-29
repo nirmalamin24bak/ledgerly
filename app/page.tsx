@@ -167,11 +167,11 @@ export default function LandingPage() {
                     { supplier: 'Metro Cement Works', inv: 'INV-2024-088', amount: '₹68,200', status: 'paid', statusColor: 'bg-emerald-50 text-emerald-700' },
                     { supplier: 'RMC Builders Supply', inv: 'INV-2024-087', amount: '₹2,15,000', status: 'partial', statusColor: 'bg-blue-50 text-blue-700' },
                   ].map(r => (
-                    <div key={r.inv} className="flex items-center justify-between px-4 py-2.5 border-b border-gray-50 last:border-0 text-xs">
-                      <div className="font-medium text-gray-800">{r.supplier}</div>
+                    <div key={r.inv} className="grid px-4 py-2.5 border-b border-gray-50 last:border-0 text-xs items-center" style={{ gridTemplateColumns: '2fr 1.5fr 1fr 70px' }}>
+                      <div className="font-medium text-gray-800 truncate">{r.supplier}</div>
                       <div className="text-gray-400">{r.inv}</div>
-                      <div className="font-semibold text-gray-900">{r.amount}</div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.statusColor}`}>{r.status}</span>
+                      <div className="font-semibold text-gray-900 text-right">{r.amount}</div>
+                      <div className="flex justify-end"><span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${r.statusColor}`}>{r.status}</span></div>
                     </div>
                   ))}
                 </div>
