@@ -1,3 +1,11 @@
+export interface LedgerProject {
+  id: string
+  owner_id: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
 export type UserRole = 'owner' | 'accountant'
 
 export type BillStatus = 'pending' | 'paid' | 'partial'

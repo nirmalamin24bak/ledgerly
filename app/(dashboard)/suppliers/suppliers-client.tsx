@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Supplier } from '@/types'
 import { formatCurrency, SUPPLIER_CATEGORIES } from '@/lib/utils'
-import { Plus, Search, ChevronRight, Trash2 } from 'lucide-react'
+import { Plus, Search, ChevronRight, Trash2, Loader2 } from 'lucide-react'
 import SupplierForm from '@/components/suppliers/supplier-form'
 
 interface SupplierWithBalance extends Supplier {
@@ -22,8 +22,11 @@ export default function SuppliersClient({
   const [category, setCategory] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editSupplier, setEditSupplier] = useState<Supplier | undefined>()
+  const [suppliersList, setSuppliersList] = useState<SupplierWithBalance[]>(suppliers)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
 
-  const filtered = suppliers.filter(s => {
+  const filtered = suppliersList.filter(s => {
     const matchSearch =
       !search ||
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -42,6 +45,25 @@ export default function SuppliersClient({
     setShowForm(true)
   }
 
+  async function handleDelete(supplier: SupplierWithBalance) {
+    if (!confirm(`Delete supplier "${supplier.name}"? This cannot be undone.`)) return
+    setDeletingId(supplier.id)
+    setDeleteError('')
+    try {
+      const res = await fetch(`/api/suppliers/${supplier.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!data.success) {
+        setDeleteError(data.error ?? 'Failed to delete supplier')
+        return
+      }
+      setSuppliersList(prev => prev.filter(s => s.id !== supplier.id))
+    } catch {
+      setDeleteError('Something went wrong. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <>
       <div className="space-y-5">
@@ -49,7 +71,7 @@ export default function SuppliersClient({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
-            <p className="text-sm text-gray-500">{suppliers.length} total suppliers</p>
+            <p className="text-sm text-gray-500">{suppliersList.length} total suppliers</p>
           </div>
           {isOwner && (
             <button onClick={handleAdd} className="btn-primary">
@@ -57,6 +79,10 @@ export default function SuppliersClient({
             </button>
           )}
         </div>
+
+        {deleteError && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{deleteError}</p>
+        )}
 
         {/* Filters */}
         <div className="flex gap-3 flex-wrap">
@@ -85,7 +111,7 @@ export default function SuppliersClient({
         <div className="card overflow-hidden">
           {filtered.length === 0 ? (
             <div className="p-12 text-center text-gray-400">
-              {suppliers.length === 0
+              {suppliersList.length === 0
                 ? <span>No suppliers yet. <button onClick={handleAdd} className="text-blue-900 hover:underline">Add your first supplier</button>.</span>
                 : 'No suppliers match your filters.'}
             </div>
@@ -121,12 +147,25 @@ export default function SuppliersClient({
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isOwner && (
-                        <button
-                          onClick={() => handleEdit(s)}
-                          className="text-xs text-gray-500 hover:text-blue-900 font-medium px-2 py-1 rounded hover:bg-blue-50"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(s)}
+                            className="text-xs text-gray-500 hover:text-blue-900 font-medium px-2 py-1 rounded hover:bg-blue-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(s)}
+                            disabled={deletingId === s.id}
+                            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            title="Delete supplier"
+                          >
+                            {deletingId === s.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />
+                            }
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

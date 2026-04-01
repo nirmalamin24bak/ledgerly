@@ -4,23 +4,27 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { BillWithSupplier, Supplier, BillStatus } from '@/types'
 import { formatCurrency, formatDate, statusColor, isOverdue, SUPPLIER_CATEGORIES } from '@/lib/utils'
-import { Upload, Search, Filter, Eye, ExternalLink, AlertTriangle } from 'lucide-react'
+import { Upload, Search, ExternalLink, AlertTriangle, Trash2, Loader2 } from 'lucide-react'
 import PaymentForm from '@/components/payments/payment-form'
 
 interface Props {
   bills: BillWithSupplier[]
   suppliers: Pick<Supplier, 'id' | 'name' | 'category'>[]
+  isOwner?: boolean
 }
 
-export default function BillsClient({ bills, suppliers }: Props) {
+export default function BillsClient({ bills, suppliers, isOwner = true }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<BillStatus | ''>('')
   const [supplierFilter, setSupplierFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [payBill, setPayBill] = useState<BillWithSupplier | null>(null)
+  const [billsList, setBillsList] = useState<BillWithSupplier[]>(bills)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
 
-  const filtered = bills.filter(b => {
+  const filtered = billsList.filter(b => {
     const matchSearch = !search ||
       b.invoice_number?.toLowerCase().includes(search.toLowerCase()) ||
       b.supplier.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -41,6 +45,25 @@ export default function BillsClient({ bills, suppliers }: Props) {
     { amount: 0, gst: 0, tds: 0 }
   )
 
+  async function handleDelete(bill: BillWithSupplier) {
+    if (!confirm(`Delete bill "${bill.invoice_number ?? bill.id.substring(0, 8)}" from ${bill.supplier.name}? This cannot be undone.`)) return
+    setDeletingId(bill.id)
+    setDeleteError('')
+    try {
+      const res = await fetch(`/api/bills/${bill.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!data.success) {
+        setDeleteError(data.error ?? 'Failed to delete bill')
+        return
+      }
+      setBillsList(prev => prev.filter(b => b.id !== bill.id))
+    } catch {
+      setDeleteError('Something went wrong. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <>
       <div className="space-y-5">
@@ -48,12 +71,16 @@ export default function BillsClient({ bills, suppliers }: Props) {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Bills</h1>
-            <p className="text-sm text-gray-500">{bills.length} total bills</p>
+            <p className="text-sm text-gray-500">{billsList.length} total bills</p>
           </div>
           <Link href="/bills/upload" className="btn-primary">
             <Upload className="w-4 h-4" /> Upload Bill
           </Link>
         </div>
+
+        {deleteError && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{deleteError}</p>
+        )}
 
         {/* Filters */}
         <div className="card p-4">
@@ -96,7 +123,7 @@ export default function BillsClient({ bills, suppliers }: Props) {
         <div className="card overflow-hidden">
           {filtered.length === 0 ? (
             <div className="p-12 text-center text-gray-400">
-              {bills.length === 0
+              {billsList.length === 0
                 ? <span>No bills yet. <Link href="/bills/upload" className="text-blue-900 hover:underline">Upload your first bill</Link>.</span>
                 : 'No bills match your filters.'}
             </div>
@@ -149,6 +176,19 @@ export default function BillsClient({ bills, suppliers }: Props) {
                             className="text-xs text-white bg-green-600 hover:bg-green-700 px-2 py-1 rounded font-medium"
                           >
                             Pay
+                          </button>
+                        )}
+                        {isOwner && (
+                          <button
+                            onClick={() => handleDelete(b)}
+                            disabled={deletingId === b.id}
+                            className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                            title="Delete bill"
+                          >
+                            {deletingId === b.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />
+                            }
                           </button>
                         )}
                       </div>

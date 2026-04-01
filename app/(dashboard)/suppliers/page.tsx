@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SuppliersClient from './suppliers-client'
 
@@ -14,18 +15,26 @@ export default async function SuppliersPage() {
 
   const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
-  const { data: suppliers } = await supabase
+  const activeProjectId = cookies().get('ledgerly_project_id')?.value
+
+  let suppliersQuery = supabase
     .from('suppliers')
     .select('*')
     .in('owner_id', ownerIds)
     .order('name', { ascending: true })
 
-  // Get outstanding balance per supplier from latest ledger entry
-  const { data: ledger } = await supabase
+  let ledgerQuery = supabase
     .from('ledger_entries')
     .select('supplier_id, running_balance')
     .in('owner_id', ownerIds)
     .order('created_at', { ascending: false })
+
+  if (activeProjectId) {
+    suppliersQuery = suppliersQuery.eq('project_id', activeProjectId)
+    ledgerQuery = ledgerQuery.eq('project_id', activeProjectId)
+  }
+
+  const [{ data: suppliers }, { data: ledger }] = await Promise.all([suppliersQuery, ledgerQuery])
 
   const balanceMap = new Map<string, number>()
   for (const entry of ledger ?? []) {
@@ -39,5 +48,5 @@ export default async function SuppliersPage() {
     outstanding_balance: balanceMap.get(s.id) ?? 0,
   }))
 
-  return <SuppliersClient suppliers={suppliersWithBalance} isOwner={true} />
+  return <SuppliersClient suppliers={suppliersWithBalance} isOwner={ownerIds.length === 1} />
 }

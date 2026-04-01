@@ -18,6 +18,8 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { LedgerProject } from '@/types'
+import ProjectSwitcher from '@/components/projects/project-switcher'
 
 const companyNav = [
   { href: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
@@ -38,9 +40,13 @@ const individualNav = [
 export default function Sidebar({
   userName,
   accountType,
+  projects = [],
+  activeProjectId,
 }: {
   userName: string
   accountType: 'individual' | 'company'
+  projects?: LedgerProject[]
+  activeProjectId?: string
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -66,20 +72,26 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Account type badge */}
-      <div className="px-5 pt-3 pb-1">
-        <span className={cn(
-          'inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full',
-          accountType === 'company'
-            ? 'bg-blue-800/60 text-blue-200'
-            : 'bg-white/10 text-blue-300'
-        )}>
-          {accountType === 'company'
-            ? <UsersRound className="w-2.5 h-2.5" />
-            : <Users className="w-2.5 h-2.5" />
-          }
-          {accountType}
-        </span>
+      {/* Account type badge + Project switcher (company only) */}
+      <div className="px-3 pt-3 pb-1 space-y-2">
+        <div className="px-2">
+          <span className={cn(
+            'inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full',
+            accountType === 'company'
+              ? 'bg-blue-800/60 text-blue-200'
+              : 'bg-white/10 text-blue-300'
+          )}>
+            {accountType === 'company'
+              ? <UsersRound className="w-2.5 h-2.5" />
+              : <Users className="w-2.5 h-2.5" />
+            }
+            {accountType}
+          </span>
+        </div>
+
+        {accountType === 'company' && projects.length > 0 && (
+          <ProjectSwitcher projects={projects} activeProjectId={activeProjectId} />
+        )}
       </div>
 
       {/* Navigation */}

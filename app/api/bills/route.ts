@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createLedgerEntry } from '@/lib/ledger'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 import path from 'path'
 
@@ -100,6 +101,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
+
     const { data: bill, error: billError } = await supabase
       .from('bills')
       .insert({
@@ -107,6 +110,7 @@ export async function POST(req: NextRequest) {
         owner_id: user.id,
         file_name,
         file_url: null,
+        project_id: projectId,
       })
       .select()
       .single()
@@ -134,6 +138,7 @@ export async function POST(req: NextRequest) {
         amount: parsed.data.total_amount,
         entry_date: parsed.data.invoice_date ?? new Date().toISOString().split('T')[0],
         description: `Bill #${parsed.data.invoice_number ?? bill.id.substring(0, 8)}`,
+        project_id: projectId,
       })
     } catch (ledgerErr) {
       console.error('Ledger entry failed — rolling back bill:', ledgerErr)

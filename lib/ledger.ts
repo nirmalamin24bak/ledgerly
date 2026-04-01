@@ -14,6 +14,7 @@ export async function createLedgerEntry({
   amount,
   entry_date,
   description,
+  project_id,
 }: {
   supplier_id: string
   owner_id: string
@@ -23,6 +24,7 @@ export async function createLedgerEntry({
   amount: number
   entry_date: string
   description?: string
+  project_id?: string | null
 }): Promise<number> {
   const supabase = createServiceClient()
 
@@ -51,6 +53,7 @@ export async function createLedgerEntry({
       running_balance: newBalance,
       entry_date,
       description: description ?? (type === 'debit' ? 'Bill raised' : 'Payment made'),
+      ...(project_id ? { project_id } : {}),
     })
 
   if (error) throw new Error(`Ledger entry failed: ${error.message}`)

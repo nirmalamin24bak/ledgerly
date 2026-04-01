@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 const SupplierSchema = z.object({
@@ -28,9 +29,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
     }
 
+    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
+
     const { data, error } = await supabase
       .from('suppliers')
-      .insert({ ...parsed.data, owner_id: user.id })
+      .insert({ ...parsed.data, owner_id: user.id, project_id: projectId })
       .select()
       .single()
 

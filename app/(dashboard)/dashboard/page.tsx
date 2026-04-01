@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { DashboardStats, BillWithSupplier } from '@/types'
 import StatsCards from '@/components/dashboard/stats-cards'
@@ -21,37 +22,31 @@ export default async function DashboardPage() {
 
   const ownerIds = [user.id, ...(accessRows?.map(r => r.owner_id) ?? [])]
 
+  const activeProjectId = cookies().get('ledgerly_project_id')?.value
+
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
   const today = now.toISOString().split('T')[0]
+
+  let billsQuery = supabase.from('bills').select('total_amount, status, due_date, invoice_date').in('owner_id', ownerIds)
+  let suppliersQuery = supabase.from('suppliers').select('id').in('owner_id', ownerIds)
+  let recentBillsQuery = supabase.from('bills').select('*, supplier:suppliers(id, name, gst_number, category)').in('owner_id', ownerIds).order('created_at', { ascending: false }).limit(10)
+  let ledgerQuery = supabase.from('ledger_entries').select('supplier_id, running_balance').in('owner_id', ownerIds).order('created_at', { ascending: false })
+
+  if (activeProjectId) {
+    billsQuery = billsQuery.eq('project_id', activeProjectId)
+    suppliersQuery = suppliersQuery.eq('project_id', activeProjectId)
+    recentBillsQuery = recentBillsQuery.eq('project_id', activeProjectId)
+    ledgerQuery = ledgerQuery.eq('project_id', activeProjectId)
+  }
 
   const [
     { data: bills },
     { data: suppliers },
     { data: recentBills },
     { data: ledgerBalances },
-  ] = await Promise.all([
-    supabase
-      .from('bills')
-      .select('total_amount, status, due_date, invoice_date')
-      .in('owner_id', ownerIds),
-    supabase
-      .from('suppliers')
-      .select('id')
-      .in('owner_id', ownerIds),
-    supabase
-      .from('bills')
-      .select('*, supplier:suppliers(id, name, gst_number, category)')
-      .in('owner_id', ownerIds)
-      .order('created_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('ledger_entries')
-      .select('supplier_id, running_balance')
-      .in('owner_id', ownerIds)
-      .order('created_at', { ascending: false }),
-  ])
+  ] = await Promise.all([billsQuery, suppliersQuery, recentBillsQuery, ledgerQuery])
 
   // ── Stats ──────────────────────────────────────────────────────
   const pendingBills = bills?.filter(b => b.status !== 'paid') ?? []

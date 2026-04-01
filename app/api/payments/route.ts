@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createLedgerEntry } from '@/lib/ledger'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 
 const PAGE_SIZE = 50
@@ -59,9 +60,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
+
     const { data: payment, error: paymentError } = await supabase
       .from('bill_payments')
-      .insert({ ...parsed.data, owner_id: user.id })
+      .insert({ ...parsed.data, owner_id: user.id, project_id: projectId })
       .select()
       .single()
 
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
       amount: parsed.data.amount,
       entry_date: parsed.data.payment_date,
       description: `Payment via ${parsed.data.mode.toUpperCase()}${parsed.data.reference_number ? ` (${parsed.data.reference_number})` : ''}`,
+      project_id: projectId,
     })
 
     // Update bill status if bill_id provided
