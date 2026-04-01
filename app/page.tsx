@@ -301,8 +301,10 @@ export default function LandingPage() {
           </div>
           <p className="text-xs text-gray-400">© {new Date().getFullYear()} Ledgerly. AI-powered bill tracking for businesses and individuals.</p>
           <div className="flex gap-5 text-xs text-gray-400">
+            <Link href="/terms" className="hover:text-gray-700 transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacy</Link>
+            <Link href="/refund" className="hover:text-gray-700 transition-colors">Refund</Link>
             <Link href="/login" className="hover:text-gray-700 transition-colors">Sign in</Link>
-            <Link href="/login?mode=signup" className="hover:text-gray-700 transition-colors">Sign up</Link>
           </div>
         </div>
       </footer>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { extractBillData } from '@/lib/ai'
 import { checkRateLimit, LIMITS } from '@/lib/rate-limit'
+import { User } from '@supabase/supabase-js'
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf']
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf']
@@ -9,10 +10,22 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 export const maxDuration = 60
 
+async function getUser(req: NextRequest): Promise<User | null> {
+  const authHeader = req.headers.get('authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7)
+    const service = createServiceClient()
+    const { data } = await service.auth.getUser(token)
+    return data.user
+  }
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUser(req)
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     // Rate limit: 10 scans per minute per user

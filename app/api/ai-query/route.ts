@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { nlToSql } from '@/lib/ai'
 import { checkRateLimit, LIMITS } from '@/lib/rate-limit'
 import { z } from 'zod'
+import { User } from '@supabase/supabase-js'
 
 const QuerySchema = z.object({
   query: z.string().min(1).max(500),
@@ -10,10 +11,22 @@ const QuerySchema = z.object({
 
 export const maxDuration = 30
 
+async function getUser(req: NextRequest): Promise<User | null> {
+  const authHeader = req.headers.get('authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7)
+    const service = createServiceClient()
+    const { data } = await service.auth.getUser(token)
+    return data.user
+  }
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUser(req)
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     // Rate limit: 20 AI queries per minute per user
@@ -34,7 +47,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid query' }, { status: 400 })
     }
 
-    const { data: accessRows } = await supabase
+    const serviceClient = createServiceClient()
+    const { data: accessRows } = await serviceClient
       .from('accountant_access')
       .select('owner_id')
       .eq('accountant_id', user.id)
@@ -42,7 +56,6 @@ export async function POST(req: NextRequest) {
 
     const { sql, explanation } = await nlToSql(parsed.data.query, ownerIds)
 
-    const serviceClient = createServiceClient()
     const { data: rows, error } = await serviceClient.rpc('execute_user_query', { p_sql: sql })
 
     if (error && error.message.includes('execute_user_query')) {

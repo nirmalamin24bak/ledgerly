@@ -105,36 +105,44 @@ export async function POST(req: NextRequest) {
       .insert({
         ...parsed.data,
         owner_id: user.id,
-        file_path,   // store path for signed URL generation
+        file_path,
         file_name,
-        file_url: null,  // deprecated — kept for schema compat
+        file_url: null,
       })
       .select()
       .single()
 
     if (billError) {
-      // Duplicate invoice number
       if (billError.code === '23505') {
         return NextResponse.json({ success: false, error: 'Invoice number already exists for this supplier' }, { status: 409 })
       }
-      throw billError
+      console.error('Bill insert error:', billError)
+      return NextResponse.json({ success: false, error: billError.message || 'Failed to save bill' }, { status: 500 })
     }
 
-    await createLedgerEntry({
-      supplier_id: parsed.data.supplier_id,
-      owner_id: user.id,
-      type: 'debit',
-      reference_type: 'bill',
-      reference_id: bill.id,
-      amount: parsed.data.total_amount,
-      entry_date: parsed.data.invoice_date ?? new Date().toISOString().split('T')[0],
-      description: `Bill #${parsed.data.invoice_number ?? bill.id.substring(0, 8)}`,
-    })
+    try {
+      await createLedgerEntry({
+        supplier_id: parsed.data.supplier_id,
+        owner_id: user.id,
+        type: 'debit',
+        reference_type: 'bill',
+        reference_id: bill.id,
+        amount: parsed.data.total_amount,
+        entry_date: parsed.data.invoice_date ?? new Date().toISOString().split('T')[0],
+        description: `Bill #${parsed.data.invoice_number ?? bill.id.substring(0, 8)}`,
+      })
+    } catch (ledgerErr) {
+      console.error('Ledger entry failed — rolling back bill:', ledgerErr)
+      await supabase.from('bills').delete().eq('id', bill.id)
+      const msg = ledgerErr instanceof Error ? ledgerErr.message : 'Failed to update ledger'
+      return NextResponse.json({ success: false, error: msg }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, data: bill })
   } catch (error) {
     console.error('POST /api/bills:', error)
-    return NextResponse.json({ success: false, error: 'Failed to create bill' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : 'Failed to create bill'
+    return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }
 

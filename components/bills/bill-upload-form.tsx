@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Supplier, ExtractedBillData } from '@/types'
 import { PAYMENT_MODES, formatCurrency } from '@/lib/utils'
-import { Upload, Loader2, Sparkles, CheckCircle, AlertTriangle, X } from 'lucide-react'
+import { Upload, Loader2, Sparkles, CheckCircle, AlertTriangle, UserPlus } from 'lucide-react'
 
 export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] }) {
   const router = useRouter()
@@ -18,6 +18,8 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
   const [extracted, setExtracted] = useState<ExtractedBillData | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [suppliersList, setSuppliersList] = useState<Supplier[]>(suppliers)
+  const [supplierStatus, setSupplierStatus] = useState<{ type: 'matched' | 'created'; name: string } | null>(null)
 
   const [form, setForm] = useState({
     supplier_id: defaultSupplierId,
@@ -56,6 +58,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
     if (!file) return
     setScanning(true)
     setError('')
+    setSupplierStatus(null)
 
     try {
       const fd = new FormData()
@@ -69,7 +72,7 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
       const ext: ExtractedBillData = data.data
       setExtracted(ext)
 
-      // Auto-fill form
+      // Auto-fill form fields
       setForm(f => ({
         ...f,
         invoice_number: ext.invoice_number ?? f.invoice_number,
@@ -86,13 +89,43 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
         tds_amount: ext.tds_amount?.toString() ?? f.tds_amount,
       }))
 
-      // Try to match supplier by name (using form state before setState completes)
-      if (ext.supplier_name && !form.supplier_id) {
-        const matched = suppliers.find(s =>
-          s.name.toLowerCase().includes(ext.supplier_name!.toLowerCase()) ||
+      // Auto-supplier: match existing or create new
+      if (ext.supplier_name) {
+        const extName = ext.supplier_name.toLowerCase()
+        const matched = suppliersList.find(s =>
+          s.name.toLowerCase() === extName ||
+          s.name.toLowerCase().includes(extName) ||
+          extName.includes(s.name.toLowerCase()) ||
           (ext.gst_number && s.gst_number === ext.gst_number)
         )
-        if (matched) setForm(prev => ({ ...prev, supplier_id: matched!.id }))
+
+        if (matched) {
+          setForm(prev => ({ ...prev, supplier_id: matched.id }))
+          setSupplierStatus({ type: 'matched', name: matched.name })
+        } else {
+          // Auto-create the supplier from extracted data
+          try {
+            const createRes = await fetch('/api/suppliers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: ext.supplier_name,
+                gst_number: ext.gst_number ?? null,
+              }),
+            })
+            const createResult = await createRes.json()
+            if (createResult.success) {
+              const newSupplier: Supplier = createResult.data
+              setSuppliersList(prev =>
+                [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name))
+              )
+              setForm(prev => ({ ...prev, supplier_id: newSupplier.id }))
+              setSupplierStatus({ type: 'created', name: newSupplier.name })
+            }
+          } catch {
+            // Non-fatal — user can manually select supplier
+          }
+        }
       }
     } catch {
       setError('Scanning failed. Please fill in details manually.')
@@ -217,10 +250,20 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
           <label className="label">Supplier *</label>
           <select className="input" value={form.supplier_id} onChange={e => set('supplier_id', e.target.value)} required>
             <option value="">Select supplier...</option>
-            {suppliers.map(s => (
+            {suppliersList.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
+          {supplierStatus && (
+            <div className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${
+              supplierStatus.type === 'created' ? 'text-blue-700' : 'text-green-700'
+            }`}>
+              {supplierStatus.type === 'created'
+                ? <><UserPlus className="w-3.5 h-3.5" /> New supplier &quot;{supplierStatus.name}&quot; added automatically</>
+                : <><CheckCircle className="w-3.5 h-3.5" /> Matched existing supplier &quot;{supplierStatus.name}&quot;</>
+              }
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
