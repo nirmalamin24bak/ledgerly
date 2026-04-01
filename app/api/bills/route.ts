@@ -105,7 +105,6 @@ export async function POST(req: NextRequest) {
       .insert({
         ...parsed.data,
         owner_id: user.id,
-        file_path,
         file_name,
         file_url: null,
       })
@@ -118,6 +117,11 @@ export async function POST(req: NextRequest) {
       }
       console.error('Bill insert error:', billError)
       return NextResponse.json({ success: false, error: billError.message || 'Failed to save bill' }, { status: 500 })
+    }
+
+    // Store file_path in a separate UPDATE to avoid schema cache issues on fresh columns
+    if (file_path) {
+      await supabase.from('bills').update({ file_path }).eq('id', bill.id)
     }
 
     try {
