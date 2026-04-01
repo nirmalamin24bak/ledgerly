@@ -26,19 +26,35 @@ export async function createLedgerEntry({
 }): Promise<number> {
   const supabase = createServiceClient()
 
-  const { data, error } = await supabase.rpc('create_ledger_entry', {
-    p_supplier_id: supplier_id,
-    p_owner_id: owner_id,
-    p_type: type,
-    p_reference_type: reference_type,
-    p_reference_id: reference_id,
-    p_amount: amount,
-    p_entry_date: entry_date,
-    p_description: description ?? (type === 'debit' ? 'Bill raised' : 'Payment made'),
-  })
+  // Get the last running balance for this supplier+owner
+  const { data: lastEntry } = await supabase
+    .from('ledger_entries')
+    .select('running_balance')
+    .eq('supplier_id', supplier_id)
+    .eq('owner_id', owner_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  const previousBalance = Number(lastEntry?.running_balance ?? 0)
+  const newBalance = type === 'debit' ? previousBalance + amount : previousBalance - amount
+
+  const { error } = await supabase
+    .from('ledger_entries')
+    .insert({
+      supplier_id,
+      owner_id,
+      type,
+      reference_type,
+      reference_id,
+      amount,
+      running_balance: newBalance,
+      entry_date,
+      description: description ?? (type === 'debit' ? 'Bill raised' : 'Payment made'),
+    })
 
   if (error) throw new Error(`Ledger entry failed: ${error.message}`)
-  return data as number
+  return newBalance
 }
 
 /**
