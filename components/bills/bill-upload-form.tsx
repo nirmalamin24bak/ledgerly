@@ -134,6 +134,13 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
     }
   }
 
+  function normalizeDate(d: string): string | null {
+    if (!d) return null
+    const ddmmyyyy = d.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+    if (ddmmyyyy) return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`
+    return d
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.supplier_id) { setError('Please select a supplier'); return }
@@ -147,8 +154,8 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
       fd.append('data', JSON.stringify({
         ...form,
         invoice_number: form.invoice_number || null,
-        invoice_date: form.invoice_date || null,
-        due_date: form.due_date || null,
+        invoice_date: normalizeDate(form.invoice_date),
+        due_date: normalizeDate(form.due_date),
         notes: form.notes || null,
         total_amount: parseFloat(form.total_amount) || 0,
         taxable_amount: parseFloat(form.taxable_amount) || 0,
