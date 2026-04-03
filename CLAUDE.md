@@ -68,6 +68,40 @@ NEXT_PUBLIC_APP_URL=            # Canonical app URL
 | `supabase-schema.sql` | Full DB schema — run this first |
 | `supabase-ai-query-rpc.sql` | AI query RPC — run after schema |
 
+### Rate Limiting (`lib/rate-limit.ts`)
+
+In-memory rate limiter with named presets. Apply via the preset helpers at the top of each API route handler:
+
+| Preset | Limit |
+|---|---|
+| `AI` | 20 req/min |
+| `UPLOAD` | 10 req/min |
+| `WRITE` | 60 req/min |
+| `READ` | 120 req/min |
+
+### File Storage
+
+Bills are uploaded to the `bills` Supabase Storage bucket. Storage paths are `{owner_id}/{timestamp}-{uuid}.{ext}` — never the original filename. Extension is validated against `ALLOWED_EXTENSIONS`; MIME type alone is not trusted. `createServiceClient()` is used for uploads to bypass RLS. The `file_path` column is updated in a separate `UPDATE` after the bill row is inserted to avoid PostgREST schema cache issues on fresh columns.
+
+### Project Scoping (Optional Feature)
+
+Bills, payments, and suppliers can optionally be scoped to a `ledger_projects` row via a `ledgerly_project_id` cookie. Before inserting `project_id`, all three POST routes verify the project belongs to the authenticated user:
+
+```ts
+if (projectId) {
+  const { data: project } = await supabase
+    .from('ledger_projects').select('id')
+    .eq('id', projectId).eq('owner_id', user.id).single()
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 403 })
+}
+```
+
+Always use `...(projectId ? { project_id: projectId } : {})` — never unconditionally include `project_id` in an insert, as the column may not exist in the schema yet.
+
+### AI Date Normalization
+
+Claude sometimes returns dates in DD-MM-YYYY format despite the system prompt requesting YYYY-MM-DD (Indian locale influence). `bill-upload-form.tsx` normalizes these with `normalizeDate()` before submission. If adding new date fields that flow through Claude extraction, pipe them through `normalizeDate()` as well.
+
 ## Important Rules
 
 - Never pass functions as props from Server → Client components (Next.js serialization error)
@@ -75,3 +109,4 @@ NEXT_PUBLIC_APP_URL=            # Canonical app URL
 - All amounts stored as `DECIMAL(15,2)` — always `Number(value)` when reading from DB
 - PDF bill scanning is not supported — Claude vision requires image format (JPG/PNG/WEBP)
 - `createServiceClient()` bypasses RLS — only use for server-side internal operations
+- Never unconditionally include optional columns (like `project_id`) in DB inserts — use conditional spread in case the column doesn't exist in the schema cache
