@@ -27,7 +27,7 @@ WHERE owner_id = 'OLD_OWNER_ID';
 
 -- ---- STEP 3: Export bills ----
 SELECT
-  'INSERT INTO bills (id, supplier_id, owner_id, invoice_number, invoice_date, due_date, total_amount, gst_amount, cgst_amount, sgst_amount, igst_amount, taxable_amount, tds_applicable, tds_rate, tds_amount, status, file_url, file_name, notes, created_at, updated_at) VALUES (' ||
+  'INSERT INTO bills (id, supplier_id, owner_id, invoice_number, invoice_date, due_date, total_amount, gst_amount, cgst_amount, sgst_amount, igst_amount, taxable_amount, tds_applicable, tds_rate, tds_amount, status, file_url, file_name, notes, raw_extracted_data, created_at, updated_at) VALUES (' ||
   quote_literal(id::text) || ', ' ||
   quote_literal(supplier_id::text) || ', ''NEW_OWNER_ID_HERE'', ' ||
   COALESCE(quote_literal(invoice_number), 'NULL') || ', ' ||
@@ -46,6 +46,7 @@ SELECT
   COALESCE(quote_literal(file_url), 'NULL') || ', ' ||
   COALESCE(quote_literal(file_name), 'NULL') || ', ' ||
   COALESCE(quote_literal(notes), 'NULL') || ', ' ||
+  COALESCE(quote_literal(raw_extracted_data::text), 'NULL') || ', ' ||
   quote_literal(created_at::text) || ', ' ||
   quote_literal(updated_at::text) || ');' AS insert_stmt
 FROM bills
@@ -92,3 +93,11 @@ SELECT
   quote_literal(updated_at::text) || ');' AS insert_stmt
 FROM user_profiles
 WHERE id = 'OLD_OWNER_ID';
+
+-- ---- NOTE: accountant_access is NOT exported automatically ----
+-- If the customer has granted accountant access to team members, those
+-- accountants must be manually re-invited to the new project and access
+-- re-granted via Authentication > Users > Invite, then re-adding them
+-- in the Ledgerly app Settings > Team page.
+-- The old accountant UUIDs reference the old auth.users and cannot be
+-- migrated directly (FK constraint would fail).

@@ -14,6 +14,11 @@ const oldClient = createClient(OLD_URL, OLD_SERVICE_KEY)
 const newClient = createClient(NEW_URL, NEW_SERVICE_KEY)
 
 async function migrateStorage() {
+  if (!OLD_SERVICE_KEY || !NEW_URL || !NEW_SERVICE_KEY || !OLD_OWNER_ID || !NEW_OWNER_ID) {
+    console.error('Error: Fill in all credentials at the top of the script before running.')
+    process.exit(1)
+  }
+
   console.log('Listing files in old bucket...')
   const { data: files, error: listError } = await oldClient.storage
     .from('bills')
