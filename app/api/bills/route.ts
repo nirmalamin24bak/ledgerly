@@ -103,6 +103,18 @@ export async function POST(req: NextRequest) {
 
     const projectId = cookies().get('ledgerly_project_id')?.value ?? null
 
+    if (projectId) {
+      const { data: project } = await supabase
+        .from('ledger_projects')
+        .select('id')
+        .eq('id', projectId)
+        .eq('owner_id', user.id)
+        .single()
+      if (!project) {
+        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
+      }
+    }
+
     const { data: bill, error: billError } = await supabase
       .from('bills')
       .insert({
