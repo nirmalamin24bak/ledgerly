@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     const { data: payment, error: paymentError } = await supabase
       .from('bill_payments')
-      .insert({ ...parsed.data, owner_id: user.id, project_id: projectId })
+      .insert({ ...parsed.data, owner_id: user.id, ...(projectId ? { project_id: projectId } : {}) })
       .select()
       .single()
 
