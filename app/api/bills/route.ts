@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { createLedgerEntry } from '@/lib/ledger'
+import { verifyProjectOwnership } from '@/lib/project'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import path from 'path'
@@ -52,16 +53,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    // Verify supplier belongs to this owner (prevents cross-tenant bill creation)
-    const { data: supplier } = await supabase
-      .from('suppliers')
-      .select('id')
-      .eq('id', parsed.data.supplier_id)
-      .eq('owner_id', user.id)
-      .single()
+    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
+
+    const [{ data: supplier }, projectValid] = await Promise.all([
+      supabase.from('suppliers').select('id').eq('id', parsed.data.supplier_id).eq('owner_id', user.id).single(),
+      verifyProjectOwnership(supabase, projectId, user.id),
+    ])
 
     if (!supplier) {
       return NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 404 })
+    }
+    if (!projectValid) {
+      return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
     }
 
     // Handle file upload
@@ -70,18 +73,15 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file') as File | null
 
     if (file) {
-      // Validate size
       if (file.size > MAX_FILE_SIZE) {
         return NextResponse.json({ success: false, error: 'File too large. Maximum 10MB.' }, { status: 400 })
       }
 
-      // Validate extension (don't trust MIME type alone)
       const ext = path.extname(file.name).replace('.', '').toLowerCase()
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         return NextResponse.json({ success: false, error: 'Invalid file type. Use JPG, PNG, WebP, or PDF.' }, { status: 400 })
       }
 
-      // Sanitize filename — store only the extension, use a UUID-based path
       const storagePath = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
       const serviceClient = createServiceClient()
 
@@ -94,24 +94,9 @@ export async function POST(req: NextRequest) {
 
       if (uploadError) {
         console.error('File upload error:', uploadError.message)
-        // Non-fatal — bill is saved without file
       } else {
-        file_path = storagePath          // store path, not public URL
-        file_name = file.name.slice(0, 255)  // sanitize length
-      }
-    }
-
-    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
-
-    if (projectId) {
-      const { data: project } = await supabase
-        .from('ledger_projects')
-        .select('id')
-        .eq('id', projectId)
-        .eq('owner_id', user.id)
-        .single()
-      if (!project) {
-        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
+        file_path = storagePath
+        file_name = file.name.slice(0, 255)
       }
     }
 

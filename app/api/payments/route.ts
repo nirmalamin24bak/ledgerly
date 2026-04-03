@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createLedgerEntry } from '@/lib/ledger'
+import { verifyProjectOwnership } from '@/lib/project'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 
@@ -34,19 +35,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    // Verify supplier belongs to this owner
-    const { data: supplier } = await supabase
-      .from('suppliers')
-      .select('id')
-      .eq('id', parsed.data.supplier_id)
-      .eq('owner_id', user.id)
-      .single()
+    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
+
+    const [{ data: supplier }, projectValid] = await Promise.all([
+      supabase.from('suppliers').select('id').eq('id', parsed.data.supplier_id).eq('owner_id', user.id).single(),
+      verifyProjectOwnership(supabase, projectId, user.id),
+    ])
 
     if (!supplier) {
       return NextResponse.json({ success: false, error: 'Supplier not found' }, { status: 404 })
     }
+    if (!projectValid) {
+      return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
+    }
 
-    // Verify bill belongs to this owner (if provided)
     if (parsed.data.bill_id) {
       const { data: bill } = await supabase
         .from('bills')
@@ -57,20 +59,6 @@ export async function POST(req: NextRequest) {
 
       if (!bill) {
         return NextResponse.json({ success: false, error: 'Bill not found' }, { status: 404 })
-      }
-    }
-
-    const projectId = cookies().get('ledgerly_project_id')?.value ?? null
-
-    if (projectId) {
-      const { data: project } = await supabase
-        .from('ledger_projects')
-        .select('id')
-        .eq('id', projectId)
-        .eq('owner_id', user.id)
-        .single()
-      if (!project) {
-        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
       }
     }
 

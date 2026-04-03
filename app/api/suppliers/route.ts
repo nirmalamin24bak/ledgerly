@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { verifyProjectOwnership } from '@/lib/project'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 
@@ -31,16 +32,8 @@ export async function POST(req: NextRequest) {
 
     const projectId = cookies().get('ledgerly_project_id')?.value ?? null
 
-    if (projectId) {
-      const { data: project } = await supabase
-        .from('ledger_projects')
-        .select('id')
-        .eq('id', projectId)
-        .eq('owner_id', user.id)
-        .single()
-      if (!project) {
-        return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
-      }
+    if (!await verifyProjectOwnership(supabase, projectId, user.id)) {
+      return NextResponse.json({ success: false, error: 'Project not found' }, { status: 403 })
     }
 
     const { data, error } = await supabase
