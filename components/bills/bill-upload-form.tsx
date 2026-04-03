@@ -146,6 +146,10 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
       if (file) fd.append('file', file)
       fd.append('data', JSON.stringify({
         ...form,
+        invoice_number: form.invoice_number || null,
+        invoice_date: form.invoice_date || null,
+        due_date: form.due_date || null,
+        notes: form.notes || null,
         total_amount: parseFloat(form.total_amount) || 0,
         taxable_amount: parseFloat(form.taxable_amount) || 0,
         cgst_amount: parseFloat(form.cgst_amount) || 0,
