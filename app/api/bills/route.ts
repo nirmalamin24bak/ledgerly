@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
         owner_id: user.id,
         file_name,
         file_url: null,
-        project_id: projectId,
+        ...(projectId ? { project_id: projectId } : {}),
       })
       .select()
       .single()
