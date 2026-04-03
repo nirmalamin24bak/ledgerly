@@ -129,7 +129,7 @@ Set all environment variables in Vercel → Settings → Environment Variables.
 user_profiles     → extends auth.users (name, role)
 suppliers         → name, gst_number, category, owner_id
 bills             → invoice data, GST breakdown, TDS, file_url
-bill_payments     → amount, mode, reference, links to bill
+payments          → amount, mode, reference, links to bill
 ledger_entries    → debit/credit with running_balance per supplier
 accountant_access → owner grants accountant access
 ```

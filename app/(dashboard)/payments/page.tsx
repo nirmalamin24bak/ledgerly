@@ -17,7 +17,7 @@ export default async function PaymentsPage() {
   const activeProjectId = cookies().get('ledgerly_project_id')?.value
 
   let paymentsQuery = supabase
-    .from('bill_payments')
+    .from('payments')
     .select('*, supplier:suppliers(id, name), bill:bills(id, invoice_number)')
     .in('owner_id', ownerIds)
     .order('payment_date', { ascending: false })

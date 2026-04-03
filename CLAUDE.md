@@ -38,7 +38,7 @@ Every table has `owner_id` referencing `auth.users`. All API routes extract `own
 - Uses `createServiceClient()` (service role) to bypass RLS for internal ledger writes
 
 ### Table Naming Note
-The payments table is named **`bill_payments`** (not `payments`) because the Supabase project also hosts the Lancer app which has its own `payments` table. Do not rename it.
+The payments table is named **`payments`**. Ledgerly has its own dedicated Supabase project (separate from Lancer).
 
 ### Supabase Clients
 - `lib/supabase/client.ts` — browser client (`createBrowserClient`), used in `'use client'` components
@@ -105,7 +105,7 @@ Claude sometimes returns dates in DD-MM-YYYY format despite the system prompt re
 ## Important Rules
 
 - Never pass functions as props from Server → Client components (Next.js serialization error)
-- The `bill_payments` table name is intentional — do not change to `payments`
+- The payments table is named `payments` — Ledgerly has its own Supabase project, no naming conflicts with other apps
 - All amounts stored as `DECIMAL(15,2)` — always `Number(value)` when reading from DB
 - PDF bill scanning is not supported — Claude vision requires image format (JPG/PNG/WEBP)
 - `createServiceClient()` bypasses RLS — only use for server-side internal operations

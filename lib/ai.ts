@@ -139,7 +139,7 @@ export async function nlToSql(
 Database tables (always filter by owner_id IN (${ownerFilter})):
 - suppliers(id, owner_id, name, gst_number, category)
 - bills(id, owner_id, supplier_id, invoice_number, invoice_date, due_date, total_amount, gst_amount, tds_amount, status)
-- bill_payments(id, owner_id, supplier_id, bill_id, amount, payment_date, mode)
+- payments(id, owner_id, supplier_id, bill_id, amount, payment_date, mode)
 - ledger_entries(id, owner_id, supplier_id, type, amount, running_balance, entry_date)
 
 RULES:

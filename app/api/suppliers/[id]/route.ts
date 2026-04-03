@@ -79,7 +79,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const [{ count: billCount }, { count: paymentCount }] = await Promise.all([
       supabase.from('bills').select('*', { count: 'exact', head: true })
         .eq('supplier_id', params.id).eq('owner_id', user.id),
-      supabase.from('bill_payments').select('*', { count: 'exact', head: true })
+      supabase.from('payments').select('*', { count: 'exact', head: true })
         .eq('supplier_id', params.id).eq('owner_id', user.id),
     ])
 
