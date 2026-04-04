@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
 import { scanWithText, scanWithVision } from '@/lib/ai'
 import { getScanCount, incrementScanCount, getCurrentYearMonth, PLAN_LIMITS, Plan } from './usage'
 import { ExtractedBillData } from '@/types'
@@ -41,6 +39,8 @@ export async function routeScan(
   if (mimeType === 'application/pdf' && plan !== 'free') {
     // Pro+: try text extraction for digital PDFs first
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
       const parsed = await pdfParse(file)
       if (parsed.text && parsed.text.trim().length > 100) {
         result = await scanWithText(parsed.text)
