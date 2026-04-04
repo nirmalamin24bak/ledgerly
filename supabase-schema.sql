@@ -230,6 +230,15 @@ CREATE TRIGGER trg_user_profiles_updated_at
 --   USING (bucket_id = 'bills' AND auth.uid() IS NOT NULL);
 
 -- ============================================================
+-- PROFILE FIELDS (added via migration)
+-- ============================================================
+-- ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS phone        TEXT;
+-- ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS company_name TEXT;
+-- ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS gstin        TEXT;
+-- ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS pan_number   TEXT;
+-- ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS address      TEXT;
+
+-- ============================================================
 -- SCAN USAGE (plan-gated monthly scan counter)
 -- Run AFTER applying the main schema above
 -- ============================================================

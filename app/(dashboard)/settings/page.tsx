@@ -12,10 +12,15 @@ export default async function SettingsPage() {
   const yearMonth = getCurrentYearMonth()
 
   const [profileResult, scanCount] = await Promise.all([
-    supabase.from('user_profiles').select('name').eq('id', user.id).single(),
+    supabase
+      .from('user_profiles')
+      .select('name, phone, company_name, gstin, pan_number, address, role')
+      .eq('id', user.id)
+      .single(),
     getScanCount(user.id, yearMonth),
   ])
 
+  const profile = profileResult.data
   const scanLimit = plan === 'enterprise' ? null : PLAN_LIMITS[plan]
 
   return (
@@ -26,8 +31,14 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsClient
-        name={profileResult.data?.name ?? ''}
+        name={profile?.name ?? ''}
+        phone={profile?.phone ?? ''}
         email={user.email ?? ''}
+        companyName={profile?.company_name ?? ''}
+        gstin={profile?.gstin ?? ''}
+        panNumber={profile?.pan_number ?? ''}
+        address={profile?.address ?? ''}
+        role={(profile?.role ?? 'owner') as 'owner' | 'accountant'}
         accountType={(user.user_metadata?.account_type ?? 'individual') as 'individual' | 'company'}
         plan={plan}
         scanCount={scanCount}
