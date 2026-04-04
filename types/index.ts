@@ -123,6 +123,8 @@ export interface LedgerEntry {
 export interface ExtractedBillData {
   supplier_name: string | null
   gst_number: string | null
+  supplier_address: string | null
+  supplier_phone: string | null
   invoice_number: string | null
   invoice_date: string | null
   due_date: string | null

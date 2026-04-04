@@ -111,6 +111,8 @@ export default function BillUploadForm({ suppliers }: { suppliers: Supplier[] })
               body: JSON.stringify({
                 name: ext.supplier_name,
                 gst_number: ext.gst_number ?? null,
+                address: ext.supplier_address ?? null,
+                phone: ext.supplier_phone ?? null,
               }),
             })
             const createResult = await createRes.json()

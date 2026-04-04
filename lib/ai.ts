@@ -14,6 +14,8 @@ const MODEL_IDS = {
 const ExtractedBillSchema = z.object({
   supplier_name: z.string().nullable(),
   gst_number: z.string().nullable(),
+  supplier_address: z.string().nullable(),
+  supplier_phone: z.string().nullable(),
   invoice_number: z.string().nullable(),
   invoice_date: z.string().nullable(),
   due_date: z.string().nullable(),
@@ -54,6 +56,8 @@ Required JSON structure:
 {
   "supplier_name": string | null,
   "gst_number": string | null,
+  "supplier_address": string | null,
+  "supplier_phone": string | null,
   "invoice_number": string | null,
   "invoice_date": "YYYY-MM-DD" | null,
   "due_date": "YYYY-MM-DD" | null,
@@ -87,6 +91,8 @@ Required JSON structure:
 {
   "supplier_name": string | null,
   "gst_number": string | null,
+  "supplier_address": string | null,
+  "supplier_phone": string | null,
   "invoice_number": string | null,
   "invoice_date": "YYYY-MM-DD" | null,
   "due_date": "YYYY-MM-DD" | null,

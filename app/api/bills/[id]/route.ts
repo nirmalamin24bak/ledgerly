@@ -4,9 +4,20 @@ import { recalculateSupplierLedger } from '@/lib/ledger'
 import { z } from 'zod'
 
 const UpdateSchema = z.object({
+  invoice_number: z.string().nullable().optional(),
+  invoice_date: z.string().nullable().optional(),
+  due_date: z.string().nullable().optional(),
+  total_amount: z.number().positive().optional(),
+  taxable_amount: z.number().optional(),
+  gst_amount: z.number().optional(),
+  cgst_amount: z.number().optional(),
+  sgst_amount: z.number().optional(),
+  igst_amount: z.number().optional(),
+  tds_applicable: z.boolean().optional(),
+  tds_rate: z.number().nullable().optional(),
+  tds_amount: z.number().optional(),
   status: z.enum(['pending', 'paid', 'partial']).optional(),
   notes: z.string().nullable().optional(),
-  due_date: z.string().nullable().optional(),
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -21,15 +32,36 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ success: false, error: parsed.error.errors[0].message }, { status: 400 })
     }
 
+    // Fetch current bill to get supplier_id (needed for ledger recalc)
+    const { data: currentBill } = await supabase
+      .from('bills')
+      .select('supplier_id')
+      .eq('id', params.id)
+      .eq('owner_id', user.id)
+      .single()
+
     const { data, error } = await supabase
       .from('bills')
       .update(parsed.data)
       .eq('id', params.id)
-      .in('owner_id', [user.id]) // Only owner can update
+      .eq('owner_id', user.id)
       .select()
       .single()
 
     if (error) throw error
+
+    // Recalculate supplier ledger if amount fields changed (non-fatal if fails)
+    const amountFieldsChanged = Object.keys(parsed.data).some(k =>
+      ['total_amount', 'taxable_amount', 'gst_amount', 'cgst_amount', 'sgst_amount', 'igst_amount', 'tds_amount'].includes(k)
+    )
+    if (amountFieldsChanged && currentBill?.supplier_id) {
+      try {
+        await recalculateSupplierLedger(currentBill.supplier_id, user.id)
+      } catch (e) {
+        console.error('Ledger recalculation failed after bill update:', e)
+      }
+    }
+
     return NextResponse.json({ success: true, data })
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to update bill' }, { status: 500 })

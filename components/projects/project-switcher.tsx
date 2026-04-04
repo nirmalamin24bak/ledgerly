@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LedgerProject } from '@/types'
 import { setActiveProject } from '@/lib/actions/projects'
-import { ChevronDown, Check, Plus, Trash2, Loader2, FolderOpen } from 'lucide-react'
+import { ChevronDown, Check, Plus, Trash2, Loader2, FolderOpen, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function ProjectSwitcher({
@@ -20,6 +20,8 @@ export default function ProjectSwitcher({
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const [error, setError] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -32,6 +34,8 @@ export default function ProjectSwitcher({
         setOpen(false)
         setCreating(false)
         setNewName('')
+        setRenamingId(null)
+        setRenameValue('')
         setError('')
       }
     }
@@ -69,6 +73,30 @@ export default function ProjectSwitcher({
       setError('Something went wrong')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleRename(e: React.FormEvent, projectId: string) {
+    e.preventDefault()
+    const name = renameValue.trim()
+    if (!name) return
+    setRenamingId(projectId)
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setError(data.error ?? 'Failed to rename')
+        return
+      }
+      setRenamingId(null)
+      setRenameValue('')
+      router.refresh()
+    } catch {
+      setError('Something went wrong')
     }
   }
 
@@ -119,22 +147,59 @@ export default function ProjectSwitcher({
             {projects.map(project => (
               <div
                 key={project.id}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-white/8 cursor-pointer group"
-                onClick={() => handleSwitch(project.id)}
+                className={renamingId === project.id ? 'px-3 py-2' : 'flex items-center gap-2 px-3 py-2 hover:bg-white/8 cursor-pointer group'}
               >
-                <Check className={cn('w-3.5 h-3.5 shrink-0', project.id === activeProjectId ? 'text-blue-300' : 'text-transparent')} />
-                <span className="text-[12px] text-blue-100 truncate flex-1">{project.name}</span>
-                {projects.length > 1 && (
-                  <button
-                    onClick={e => handleDelete(e, project.id, project.name)}
-                    className="opacity-0 group-hover:opacity-100 text-blue-400/60 hover:text-red-400 transition-all"
-                    disabled={deletingId === project.id}
-                  >
-                    {deletingId === project.id
-                      ? <Loader2 className="w-3 h-3 animate-spin" />
-                      : <Trash2 className="w-3 h-3" />
-                    }
-                  </button>
+                {renamingId === project.id ? (
+                  <form onSubmit={e => handleRename(e, project.id)} className="space-y-1.5">
+                    <input
+                      autoFocus
+                      className="w-full bg-white/10 text-white text-[12px] px-2 py-1.5 rounded border border-white/20 focus:outline-none focus:border-blue-400 placeholder-blue-300/40"
+                      placeholder="Project name..."
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      maxLength={100}
+                    />
+                    <div className="flex gap-1.5">
+                      <button
+                        type="submit"
+                        disabled={!renameValue.trim()}
+                        className="flex-1 text-[11px] font-medium bg-blue-600 hover:bg-blue-500 text-white py-1 rounded disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setRenamingId(null); setRenameValue('') }}
+                        className="px-2 text-[11px] text-blue-300/70 hover:text-blue-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <Check className={cn('w-3.5 h-3.5 shrink-0', project.id === activeProjectId ? 'text-blue-300' : 'text-transparent')} />
+                    <span className="text-[12px] text-blue-100 truncate flex-1" onClick={() => handleSwitch(project.id)}>{project.name}</span>
+                    <button
+                      onClick={() => { setRenamingId(project.id); setRenameValue(project.name) }}
+                      className="opacity-0 group-hover:opacity-100 text-blue-400/60 hover:text-blue-200 transition-all"
+                      title="Rename project"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    {projects.length > 1 && (
+                      <button
+                        onClick={e => handleDelete(e, project.id, project.name)}
+                        className="opacity-0 group-hover:opacity-100 text-blue-400/60 hover:text-red-400 transition-all"
+                        disabled={deletingId === project.id}
+                      >
+                        {deletingId === project.id
+                          ? <Loader2 className="w-3 h-3 animate-spin" />
+                          : <Trash2 className="w-3 h-3" />
+                        }
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ))}

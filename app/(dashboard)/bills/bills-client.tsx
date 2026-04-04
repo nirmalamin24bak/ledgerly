@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { BillWithSupplier, Supplier, BillStatus } from '@/types'
 import { formatCurrency, formatDate, statusColor, isOverdue, SUPPLIER_CATEGORIES } from '@/lib/utils'
-import { Upload, Search, ExternalLink, AlertTriangle, Trash2, Loader2 } from 'lucide-react'
+import { Upload, Search, ExternalLink, AlertTriangle, Trash2, Loader2, Pencil } from 'lucide-react'
 import PaymentForm from '@/components/payments/payment-form'
+import BillEditForm from '@/components/bills/bill-edit-form'
 
 interface Props {
   bills: BillWithSupplier[]
@@ -20,6 +21,7 @@ export default function BillsClient({ bills, suppliers, isOwner = true }: Props)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [payBill, setPayBill] = useState<BillWithSupplier | null>(null)
+  const [editBill, setEditBill] = useState<BillWithSupplier | null>(null)
   const [billsList, setBillsList] = useState<BillWithSupplier[]>(bills)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
@@ -170,6 +172,13 @@ export default function BillsClient({ bills, suppliers, isOwner = true }: Props)
                             <ExternalLink className="w-4 h-4" />
                           </a>
                         )}
+                        <button
+                          onClick={() => setEditBill(b)}
+                          className="text-gray-400 hover:text-blue-900 transition-colors"
+                          title="Edit bill"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         {b.status !== 'paid' && (
                           <button
                             onClick={() => setPayBill(b)}
@@ -207,6 +216,17 @@ export default function BillsClient({ bills, suppliers, isOwner = true }: Props)
           supplier={payBill.supplier}
           onClose={() => setPayBill(null)}
           onSuccess={() => { setPayBill(null); window.location.reload() }}
+        />
+      )}
+
+      {editBill && (
+        <BillEditForm
+          bill={editBill}
+          onClose={() => setEditBill(null)}
+          onSuccess={(updatedBill) => {
+            setBillsList(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
+            setEditBill(null)
+          }}
         />
       )}
     </>
