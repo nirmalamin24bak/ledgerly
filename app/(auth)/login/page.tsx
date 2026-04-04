@@ -37,7 +37,7 @@ export default function LoginPage() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { name, account_type: accountType } },
+          options: { data: { name, account_type: accountType, plan: 'free' } },
         })
         if (error) { setError(error.message); return }
         if (data.user) {

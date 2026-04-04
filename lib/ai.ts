@@ -6,6 +6,11 @@ function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? 'placeholder' })
 }
 
+const MODEL_IDS = {
+  haiku: 'claude-haiku-4-5-20251001',
+  opus: 'claude-opus-4-6',
+} as const
+
 const ExtractedBillSchema = z.object({
   supplier_name: z.string().nullable(),
   gst_number: z.string().nullable(),
@@ -65,19 +70,87 @@ Required JSON structure:
   "confidence": "high" | "medium" | "low"
 }`
 
-export async function extractBillData(
-  fileBuffer: Buffer,
-  mimeType: string
-): Promise<ExtractedBillData> {
+const TEXT_SYSTEM_PROMPT = `You are an expert Indian GST invoice parser.
+Extract all bill/invoice details from the provided text and return ONLY a valid JSON object — no markdown, no explanation.
+
+Rules:
+- All amounts in INR as plain numbers (no currency symbols or commas)
+- Dates in YYYY-MM-DD format
+- GST number format: 22AAAAA0000A1Z5 (15 alphanumeric chars)
+- If IGST is present → CGST and SGST should be 0 (inter-state supply)
+- If CGST + SGST present → IGST is 0 (intra-state supply)
+- TDS is applicable if explicitly mentioned on the bill
+- confidence: "high" = all key fields found clearly, "medium" = some missing, "low" = very sparse or unclear
+- Use null for any field you cannot find — never guess amounts
+
+Required JSON structure:
+{
+  "supplier_name": string | null,
+  "gst_number": string | null,
+  "invoice_number": string | null,
+  "invoice_date": "YYYY-MM-DD" | null,
+  "due_date": "YYYY-MM-DD" | null,
+  "line_items": [{ "description": string, "quantity": number|null, "unit": string|null, "rate": number|null, "amount": number|null, "gst_rate": number|null }],
+  "taxable_amount": number | null,
+  "cgst_amount": number | null,
+  "sgst_amount": number | null,
+  "igst_amount": number | null,
+  "gst_amount": number | null,
+  "total_amount": number | null,
+  "tds_applicable": boolean,
+  "tds_rate": number | null,
+  "tds_amount": number | null,
+  "confidence": "high" | "medium" | "low"
+}`
+
+// Internal result type used by router for fallback decisions
+export type InternalScanResult = {
+  data: ExtractedBillData
+  // Count of null critical fields (supplier_name, gst_number, invoice_number, invoice_date, total_amount)
+  // Lower = better. Used by router to decide whether to retry with Opus.
+  nullCount: number
+  modelUsed: string
+}
+
+function parseAndValidate(raw: string | null, modelUsed: string): InternalScanResult {
+  if (!raw) throw new Error('Claude returned empty response')
+
+  const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    throw new Error('Claude returned malformed JSON — please retry or upload a clearer image')
+  }
+
+  const result = ExtractedBillSchema.safeParse(parsed)
+  if (!result.success) {
+    throw new Error('Claude response failed validation — please retry')
+  }
+
+  const data = result.data as ExtractedBillData
+  const criticalFields: (keyof ExtractedBillData)[] = [
+    'supplier_name', 'gst_number', 'invoice_number', 'invoice_date', 'total_amount',
+  ]
+  const nullCount = criticalFields.filter(f => data[f] === null || data[f] === undefined).length
+
+  return { data, nullCount, modelUsed }
+}
+
+export async function scanWithVision(
+  base64: string,
+  mimeType: string,
+  model: 'haiku' | 'opus' = 'haiku'
+): Promise<InternalScanResult> {
   const client = getClient()
-  const base64 = fileBuffer.toString('base64')
 
   const claudeMediaType = mimeType === 'application/pdf'
     ? 'image/jpeg'
     : (mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp')
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-6',
+    model: MODEL_IDS[model],
     max_tokens: 2000,
     system: SYSTEM_PROMPT,
     messages: [
@@ -95,26 +168,26 @@ export async function extractBillData(
   })
 
   const raw = response.content[0]?.type === 'text' ? response.content[0].text : null
-  if (!raw) throw new Error('Claude returned empty response')
+  return parseAndValidate(raw, MODEL_IDS[model])
+}
 
-  // Strip markdown fences if present
-  const cleaned = raw.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim()
+export async function scanWithText(text: string): Promise<InternalScanResult> {
+  const client = getClient()
 
-  // Safe JSON parse with meaningful error
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(cleaned)
-  } catch {
-    throw new Error('Claude returned malformed JSON — please retry or upload a clearer image')
-  }
+  const response = await client.messages.create({
+    model: MODEL_IDS.haiku,
+    max_tokens: 2000,
+    system: TEXT_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: `Extract all invoice/bill details from the following document text and return as JSON:\n\n${text.slice(0, 8000)}`,
+      },
+    ],
+  })
 
-  // Validate structure with Zod — reject hallucinated/wrong-shape responses
-  const result = ExtractedBillSchema.safeParse(parsed)
-  if (!result.success) {
-    throw new Error('Claude response failed validation — please retry')
-  }
-
-  return result.data as ExtractedBillData
+  const raw = response.content[0]?.type === 'text' ? response.content[0].text : null
+  return parseAndValidate(raw, `${MODEL_IDS.haiku}:text`)
 }
 
 // Safe UUID validator — prevent prompt injection via ownerIds

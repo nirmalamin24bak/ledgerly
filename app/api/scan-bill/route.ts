@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { extractBillData } from '@/lib/ai'
+import { routeScan, ScanLimitError } from '@/lib/scan/router'
+import { Plan } from '@/lib/scan/usage'
 import { checkRateLimit, LIMITS } from '@/lib/rate-limit'
 import { User } from '@supabase/supabase-js'
 
@@ -55,10 +56,22 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const extracted = await extractBillData(buffer, file.type)
+    const plan = (user.user_metadata?.plan ?? 'free') as Plan
+    const result = await routeScan(buffer, file.type, user.id, plan)
 
-    return NextResponse.json({ success: true, data: extracted })
+    return NextResponse.json({ success: true, data: result.data, model_used: result.modelUsed })
   } catch (error) {
+    if (error instanceof ScanLimitError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+          plan: error.plan,
+          limit: error.limit,
+        },
+        { status: 402 }
+      )
+    }
     console.error('scan-bill error:', error)
     const message = error instanceof Error ? error.message : 'Scan failed'
     return NextResponse.json({ success: false, error: message }, { status: 500 })

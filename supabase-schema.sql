@@ -228,3 +228,32 @@ CREATE TRIGGER trg_user_profiles_updated_at
 -- CREATE POLICY "auth users read own bills"
 --   ON storage.objects FOR SELECT
 --   USING (bucket_id = 'bills' AND auth.uid() IS NOT NULL);
+
+-- ============================================================
+-- SCAN USAGE (plan-gated monthly scan counter)
+-- Run AFTER applying the main schema above
+-- ============================================================
+
+CREATE TABLE scan_usage (
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  year_month TEXT NOT NULL,  -- e.g. '2026-04'
+  count      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, year_month)
+);
+
+ALTER TABLE scan_usage ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own scan usage"
+  ON scan_usage FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Atomic upsert-increment called by service role (bypasses RLS)
+CREATE OR REPLACE FUNCTION increment_scan_count(p_user_id UUID, p_year_month TEXT)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO scan_usage (user_id, year_month, count)
+  VALUES (p_user_id, p_year_month, 1)
+  ON CONFLICT (user_id, year_month)
+  DO UPDATE SET count = scan_usage.count + 1;
+END;
+$$;

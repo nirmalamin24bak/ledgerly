@@ -1,17 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SettingsClient from './settings-client'
+import { getScanCount, getCurrentYearMonth, PLAN_LIMITS, Plan } from '@/lib/scan/usage'
 
 export default async function SettingsPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('name')
-    .eq('id', user.id)
-    .single()
+  const plan = (user.user_metadata?.plan ?? 'free') as Plan
+  const yearMonth = getCurrentYearMonth()
+
+  const [profileResult, scanCount] = await Promise.all([
+    supabase.from('user_profiles').select('name').eq('id', user.id).single(),
+    getScanCount(user.id, yearMonth),
+  ])
+
+  const scanLimit = plan === 'enterprise' ? null : PLAN_LIMITS[plan]
 
   return (
     <div className="space-y-6 max-w-xl">
@@ -21,9 +26,12 @@ export default async function SettingsPage() {
       </div>
 
       <SettingsClient
-        name={profile?.name ?? ''}
+        name={profileResult.data?.name ?? ''}
         email={user.email ?? ''}
         accountType={(user.user_metadata?.account_type ?? 'individual') as 'individual' | 'company'}
+        plan={plan}
+        scanCount={scanCount}
+        scanLimit={scanLimit}
       />
     </div>
   )
