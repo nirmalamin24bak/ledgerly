@@ -43,14 +43,22 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
     // Fetch bill to get supplier_id and file_path before deletion
-    const { data: bill } = await supabase
+    // Only filter by id — RLS (accessible_owner_ids) handles read access
+    const { data: bill, error: fetchError } = await supabase
       .from('bills')
       .select('id, supplier_id, file_path, owner_id')
       .eq('id', params.id)
-      .eq('owner_id', user.id)
       .single()
 
-    if (!bill) return NextResponse.json({ success: false, error: 'Bill not found' }, { status: 404 })
+    if (fetchError || !bill) {
+      console.error('bill fetch error:', fetchError?.message, 'bill_id:', params.id, 'user_id:', user.id)
+      return NextResponse.json({ success: false, error: 'Bill not found' }, { status: 404 })
+    }
+
+    // Only the bill owner can delete (accountants can view but not delete)
+    if (bill.owner_id !== user.id) {
+      return NextResponse.json({ success: false, error: 'Only the account owner can delete bills' }, { status: 403 })
+    }
 
     // Delete ledger entry for this bill
     await supabase
